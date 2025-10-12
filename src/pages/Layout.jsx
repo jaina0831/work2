@@ -37,10 +37,12 @@ export default function Layout() {
       </header>
 
       {/* 主內容區 */}
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="flex-grow max-w-6xl mx-auto px-6 py-10">
         <Outlet />
       </main>
-      <footer class="ft">© Orbit Coders · Galactic Explorer</footer>
+      <footer className="bg-white border-t border-gray-200 py-3 text-center text-gray-600">
+        © 2025 野貓領地 | Hogwarts Coder · Slytherin
+      </footer>
     </div>
   );
 }
