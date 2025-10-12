@@ -9,7 +9,7 @@ export default function FeedPage() {
   return (
     <div className="min-h-screen">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-4">🐾 貓咪日常分享</h1>
+        <h1 className="text-3xl font-bold mb-4">貓咪日常分享</h1>
         <PostForm />
         {isLoading && <p>載入中...</p>}
         <div className="space-y-4">
