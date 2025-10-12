@@ -40,6 +40,7 @@ export default function Layout() {
       <main className="max-w-6xl mx-auto px-6 py-10">
         <Outlet />
       </main>
+      <footer class="ft">© Orbit Coders · Galactic Explorer</footer>
     </div>
   );
 }
