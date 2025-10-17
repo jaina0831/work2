@@ -58,3 +58,9 @@ export const useDeletePost = () => {
     },
   });
 };
+
+// 新增地圖
+export const usePlaces = () => useQuery({
+  queryKey: ["places"],
+  queryFn: async () => (await api.get("/places")).data
+});
