@@ -1,13 +1,19 @@
 from fastapi import FastAPI, UploadFile, Form, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, File
 from typing import Optional, List, Literal
 from datetime import datetime
 from supabase import create_client, Client
 import os, shutil
 
-app = FastAPI(title="FastAPI", version="0.1.0", root_path="/api")
+app = FastAPI(
+    title="FastAPI",
+    version="0.1.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+    redoc_url=None
+)
 
 
 app.add_middleware(
@@ -52,7 +58,7 @@ class Post(BaseModel):
     image_url: Optional[str] = None
     likes: int = 0
     created_at: datetime
-    comments: List[Comment] = []
+    comments: List[Comment] = Field(default_factory=list)
     type: Literal["shelter","cafe"] = "shelter"
     name: str = "untitled"
     lat: float = 0.0
