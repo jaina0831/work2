@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, Form, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, File
+from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime
 from supabase import create_client, Client
@@ -22,9 +22,12 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_ANON_KEY"]
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# ✅ 用 getenv，避免環境變數缺少時直接崩潰
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 BUCKET = "images"
 
 # in-memory 資料
@@ -86,14 +89,19 @@ def create_post(
     global post_id_counter
     image_url = None
 
-    if image:
-        data = image.file.read()
-        filename = f"{post_id_counter}_{image.filename}"
-        # 上傳到 Supabase Storage
+   if image:
+    data = image.file.read()
+    filename = f"{post_id_counter}_{image.filename}"
+    if supabase:
         supabase.storage.from_(BUCKET).upload(filename, data, {"contentType": image.content_type})
-        # 取得公開 URL
         image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
-
+    else:
+        # fallback：存到 /tmp，回 /api/static/...（示範用；serverless 非長久）
+        path = os.path.join(UPLOAD_DIR, filename)
+        with open(path, "wb") as f:
+            f.write(data)
+        image_url = f"/api/static/{filename}"
+        
     new_post = Post(
         id=post_id_counter,
         author=author,

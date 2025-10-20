@@ -17,8 +17,7 @@ export const usePost = (id) =>
 export const useCreatePost = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (fd) =>
-      (await api.post("/posts", fd, { headers: { "Content-Type": "multipart/form-data" } })).data,
+    mutationFn: async (fd) => (await api.post("/posts", fd)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
   });
 };
