@@ -1,8 +1,10 @@
 {
   "builds": [{ "src": "main.py", "use": "@vercel/python" }],
   "routes": [
-    { "src": "/(docs|openapi.json)", "dest": "main.py" },
-    { "src": "/api/(.*)", "dest": "main.py" },
-    { "src": "/(.*)", "dest": "main.py" }
+    { "src": "/openapi.json",           "dest": "main.py" },
+    { "src": "/(docs|redoc)(.*)",       "dest": "main.py" },
+    { "src": "/static/(.*)",            "dest": "main.py" },
+    { "src": "/api/(.*)",               "dest": "main.py" },
+    { "src": "/(.*)",                   "dest": "main.py" }
   ]
 }
