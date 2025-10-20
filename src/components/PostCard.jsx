@@ -31,11 +31,22 @@ export default function PostCard({ post }) {
         🗑️
       </button>
 
-      <figure className="px-4 pt-6">
-        {post.image_url && (
-          <img src={post.image_url} alt="pet" className="rounded-xl" />
-        )}
-      </figure>
+     <figure className="px-4 pt-6">
+  {post.image_url && (
+    // 1) 若是絕對網址就直接用；2) 若是 /static/... 就補上 /api
+    <img
+      src={
+        post.image_url.startsWith("http")
+          ? post.image_url
+          : (post.image_url.startsWith("/api")
+              ? post.image_url
+              : `/api${post.image_url}`)
+      }
+      alt="pet"
+      className="rounded-xl"
+    />
+  )}
+</figure>
 
       <div className="p-4">
         {/* 如果有 title 可以顯示： */}

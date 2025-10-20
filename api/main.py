@@ -77,7 +77,7 @@ def create_post(
         path = os.path.join(UPLOAD_DIR, image.filename)
         with open(path, "wb") as f:
             shutil.copyfileobj(image.file, f)
-        image_url = f"/static/{image.filename}"
+        image_url = f"/api/static/{image.filename}"
 
     new_post = Post(
         id=post_id_counter, author=author, title=title, content=content,
