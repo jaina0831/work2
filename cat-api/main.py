@@ -6,7 +6,8 @@ from typing import Optional, List, Literal
 from datetime import datetime
 import os, shutil
 
-app = FastAPI(title="FastAPI", version="0.1.0")
+app = FastAPI(title="FastAPI", version="0.1.0", root_path="/api")
+
 
 app.add_middleware(
     CORSMiddleware,

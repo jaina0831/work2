@@ -1,7 +1,8 @@
 {
   "rewrites": [
-    { "source": "/openapi.json",     "destination": "/api/main.py" },
-    { "source": "/(docs|redoc)(.*)", "destination": "/api/main.py" },
-    { "source": "/api/(.*)",         "destination": "/api/main.py" }
+    { "source": "/api/(.*)", "destination": "/api/main.py" }
+  ],
+  "redirects": [
+    { "source": "/docs", "destination": "/api/docs", "permanent": false }
   ]
 }
