@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime
 from supabase import create_client, Client
+from os import getenv
 import os, tempfile
 
 # ----------------------
@@ -222,3 +223,17 @@ def require_db():
             status_code=500,
             detail="Supabase not configured. Set SUPABASE_URL & SUPABASE_ANON_KEY on Vercel and redeploy."
         )
+
+def require_db():
+    if supabase is None:
+        raise HTTPException(
+            500,
+            "Supabase not configured. Set SUPABASE_URL & SUPABASE_ANON_KEY on Vercel and redeploy."
+        )
+
+@app.get("/api/health")
+def health_check():
+    return {
+        "env_loaded": bool(getenv("SUPABASE_URL") and getenv("SUPABASE_ANON_KEY")),
+        "using": "supabase" if supabase else "none",
+    }
