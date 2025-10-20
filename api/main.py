@@ -1,22 +1,23 @@
-from fastapi import FastAPI, UploadFile, Form, File
+from fastapi import FastAPI, UploadFile, Form, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime
 from supabase import create_client, Client
-import os, shutil
+import os, tempfile
 
-
+# ----------------------
+# App 基本設定
+# ----------------------
 app = FastAPI(
     title="FastAPI",
     version="0.1.0",
-    root_path="/api",          # ← 關鍵：讓 /api/* 路由到 /posts 這些路由
-    docs_url="/docs", 
+    root_path="/api",           # 對外走 /api/*
+    docs_url="/docs",
     openapi_url="/api/openapi.json",
-    redoc_url=None
+    redoc_url=None,
 )
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,25 +25,26 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-# ✅ 用 getenv，避免環境變數缺少時直接崩潰
+# ----------------------
+# Supabase 連線 & Storage
+# ----------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-supabase: Client | None = None
+supabase: Optional[Client] = None
 if SUPABASE_URL and SUPABASE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-BUCKET = "images"
 
-# in-memory 資料
-posts: List["Post"] = []
-comments: List["Comment"] = []
-post_id_counter = 1
-comment_id_counter = 1
+BUCKET = "images"  # 請在 Storage 建 public bucket: images
 
-# ✅ Vercel 可寫路徑：/tmp
-UPLOAD_DIR = "/tmp/uploads"
+# /tmp 作為 fallback（若沒設 Supabase）
+UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="static")
+# 若你還有舊資料在 /api/static/xxx，保留這個 mount 當備援
+app.mount("/api/static", StaticFiles(directory=UPLOAD_DIR), name="static")
 
+# ----------------------
+# Pydantic 模型（回傳用）
+# ----------------------
 class Comment(BaseModel):
     id: int
     post_id: int
@@ -50,19 +52,15 @@ class Comment(BaseModel):
     text: str
     created_at: datetime
 
-class CommentIn(BaseModel):
-    post_id: int
-    author: str
-    text: str
-
 class Post(BaseModel):
     id: int
     author: str
     title: str
     content: str
     image_url: Optional[str] = None
-    likes: int = 0
+    likes: int
     created_at: datetime
+    # 下方欄位你的前端有用，留著預設值即可
     comments: List[Comment] = Field(default_factory=list)
     type: Literal["shelter","cafe"] = "shelter"
     name: str = "untitled"
@@ -70,16 +68,70 @@ class Post(BaseModel):
     lng: float = 0.0
     addr: str = ""
 
+# ----------------------
+# 圖片上傳（Storage 優先，退回 /tmp）
+# ----------------------
+def upload_image(image: UploadFile) -> Optional[str]:
+    if not image:
+        return None
+    data = image.file.read()
+    filename = f"{int(datetime.utcnow().timestamp())}_{image.filename}"
+
+    # 走 Supabase Storage
+    if supabase is not None:
+        try:
+            supabase.storage.from_(BUCKET).upload(
+                filename,
+                data,
+                {"contentType": image.content_type or "application/octet-stream", "upsert": True}
+            )
+            return supabase.storage.from_(BUCKET).get_public_url(filename)
+        except Exception as e:
+            print("⚠️ Supabase upload failed:", e)
+
+    # 退回 /tmp（不持久）
+    path = os.path.join(UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(data)
+    return f"/api/static/{filename}"
+
+# ----------------------
+# API：Posts（走資料庫）
+# ----------------------
 @app.get("/posts", response_model=List[Post])
 def list_posts():
-    return sorted(posts, key=lambda p: p.created_at, reverse=True)
+    rows = supabase.table("posts").select("*").order("created_at", desc=True).execute().data
+    # 合併 comments（前端需要）
+    if rows:
+        ids = [r["id"] for r in rows]
+        cmts = supabase.table("comments").select("*").in_("post_id", ids).order("created_at").execute().data
+        by_post = {}
+        for c in cmts or []:
+            by_post.setdefault(c["post_id"], []).append(c)
+        for r in rows:
+            r["comments"] = by_post.get(r["id"], [])
+            # 填充你前端額外欄位
+            r.setdefault("type", "shelter")
+            r.setdefault("name", "untitled")
+            r.setdefault("lat", 0.0)
+            r.setdefault("lng", 0.0)
+            r.setdefault("addr", "")
+    return rows or []
 
 @app.get("/posts/{post_id}", response_model=Post)
 def get_post(post_id: int):
-    for p in posts:
-        if p.id == post_id:
-            return p
-    raise RuntimeError("Post not found")
+    rows = supabase.table("posts").select("*").eq("id", post_id).limit(1).execute().data
+    if not rows:
+        raise HTTPException(404, "Post not found")
+    post = rows[0]
+    cmts = supabase.table("comments").select("*").eq("post_id", post_id).order("created_at").execute().data
+    post["comments"] = cmts or []
+    post.setdefault("type", "shelter")
+    post.setdefault("name", "untitled")
+    post.setdefault("lat", 0.0)
+    post.setdefault("lng", 0.0)
+    post.setdefault("addr", "")
+    return post
 
 @app.post("/posts", response_model=Post)
 def create_post(
@@ -88,89 +140,50 @@ def create_post(
     content: str = Form(...),
     image: UploadFile | None = File(None)
 ):
-    global post_id_counter
-
-    image_url = None
-
-    try:
-        if image:
-            data = image.file.read()
-            filename = f"{post_id_counter}_{int(datetime.utcnow().timestamp())}_{image.filename}"
-
-            # 優先走 Supabase
-            if supabase is not None:
-                try:
-                    supabase.storage.from_(BUCKET).upload(
-                        filename,
-                        data,
-                        {"contentType": image.content_type, "upsert": True}
-                    )
-                    image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
-                except Exception as e:
-                    print("⚠️ Supabase upload failed:", e)
-                    image_url = None
-
-            # 如果 Supabase 沒設成功，就存 /tmp/uploads
-            if image_url is None:
-                os.makedirs(UPLOAD_DIR, exist_ok=True)
-                path = os.path.join(UPLOAD_DIR, filename)
-                with open(path, "wb") as f:
-                    f.write(data)
-                image_url = f"/api/static/{filename}"
-
-    except Exception as e:
-        print("❌ Image upload error:", e)
-        image_url = None
-
-    new_post = Post(
-        id=post_id_counter,
-        author=author,
-        title=title,
-        content=content,
-        image_url=image_url,
-        likes=0,
-        created_at=datetime.utcnow(),
-        comments=[]
-    )
-
-    post_id_counter += 1
-    posts.append(new_post)
-    return new_post
-
+    image_url = upload_image(image) if image else None
+    row = supabase.table("posts").insert({
+        "author": author,
+        "title": title,
+        "content": content,
+        "image_url": image_url
+    }).select("*").execute().data[0]
+    # 新增回傳要帶 comments 空陣列，符合前端型態
+    row["comments"] = []
+    row.setdefault("type", "shelter")
+    row.setdefault("name", "untitled")
+    row.setdefault("lat", 0.0)
+    row.setdefault("lng", 0.0)
+    row.setdefault("addr", "")
+    return row
 
 @app.post("/posts/{post_id}/like", response_model=Post)
 def like_post(post_id: int):
-    for p in posts:
-        if p.id == post_id:
-            p.likes += 1
-            return p
-    raise RuntimeError("Post not found")
-
-@app.post("/comments", response_model=Comment)
-def add_comment(payload: CommentIn):
-    global comment_id_counter
-    c = Comment(
-        id=comment_id_counter, post_id=payload.post_id,
-        author=payload.author, text=payload.text, created_at=datetime.utcnow()
-    )
-    comment_id_counter += 1
-    comments.append(c)
-    for p in posts:
-        if p.id == payload.post_id:
-            p.comments.append(c)
-            break
-    return c
+    rows = supabase.table("posts").select("likes").eq("id", post_id).limit(1).execute().data
+    if not rows:
+        raise HTTPException(404, "Post not found")
+    likes = int(rows[0]["likes"] or 0) + 1
+    supabase.table("posts").update({"likes": likes}).eq("id", post_id).execute()
+    # 回傳完整的 post
+    return get_post(post_id)
 
 @app.delete("/posts/{post_id}")
 def delete_post(post_id: int):
-    global posts, comments
-    target = next((p for p in posts if p.id == post_id), None)
-    if not target:
-        return {"ok": False, "error": "Post not found"}
+    # 先取出 image_url 以便刪除 Storage 檔案（可選）
+    rows = supabase.table("posts").select("image_url").eq("id", post_id).limit(1).execute().data
+    if not rows:
+        raise HTTPException(404, "Post not found")
+    image_url = rows[0]["image_url"]
 
-    # 跟建立時一致：/api/static/
-    if target.image_url and target.image_url.startswith("/api/static/"):
-        filename = target.image_url.replace("/api/static/", "")
+    # 刪 Storage 檔案（若是 supabase URL）
+    if image_url and SUPABASE_URL and image_url.startswith(SUPABASE_URL):
+        try:
+            name = image_url.rsplit("/", 1)[-1]
+            supabase.storage.from_(BUCKET).remove([name])
+        except Exception:
+            pass
+    # 刪 /tmp 檔案（fallback）
+    if image_url and image_url.startswith("/api/static/"):
+        filename = image_url.replace("/api/static/", "")
         path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(path):
             try:
@@ -178,6 +191,27 @@ def delete_post(post_id: int):
             except Exception:
                 pass
 
-    posts = [p for p in posts if p.id != post_id]
-    comments = [c for c in comments if c.post_id != post_id]
+    # 刪 DB 資料（on delete cascade 會順帶刪留言）
+    supabase.table("posts").delete().eq("id", post_id).execute()
     return {"ok": True}
+
+# ----------------------
+# API：Comments（走資料庫）
+# ----------------------
+class CommentIn(BaseModel):
+    post_id: int
+    author: str
+    text: str
+
+@app.post("/comments", response_model=Comment)
+def add_comment(payload: CommentIn):
+    # 確認 post 存在
+    exists = supabase.table("posts").select("id").eq("id", payload.post_id).limit(1).execute().data
+    if not exists:
+        raise HTTPException(404, "Post not found")
+    row = supabase.table("comments").insert({
+        "post_id": payload.post_id,
+        "author": payload.author,
+        "text": payload.text
+    }).select("*").execute().data[0]
+    return row
