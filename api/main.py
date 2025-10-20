@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List, Literal
 from datetime import datetime
+from supabase import create_client, Client
 import os, shutil
 
 app = FastAPI(title="FastAPI", version="0.1.0", root_path="/api")
@@ -14,6 +15,11 @@ app.add_middleware(
     allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
+
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_ANON_KEY"]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+BUCKET = "images"
 
 # in-memory 資料
 posts: List["Post"] = []
@@ -73,15 +79,24 @@ def create_post(
 ):
     global post_id_counter
     image_url = None
+
     if image:
-        path = os.path.join(UPLOAD_DIR, image.filename)
-        with open(path, "wb") as f:
-            shutil.copyfileobj(image.file, f)
-        image_url = f"/api/static/{image.filename}"
+        data = image.file.read()
+        filename = f"{post_id_counter}_{image.filename}"
+        # 上傳到 Supabase Storage
+        supabase.storage.from_(BUCKET).upload(filename, data, {"contentType": image.content_type})
+        # 取得公開 URL
+        image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
 
     new_post = Post(
-        id=post_id_counter, author=author, title=title, content=content,
-        image_url=image_url, likes=0, created_at=datetime.utcnow(), comments=[]
+        id=post_id_counter,
+        author=author,
+        title=title,
+        content=content,
+        image_url=image_url,
+        likes=0,
+        created_at=datetime.utcnow(),
+        comments=[]
     )
     post_id_counter += 1
     posts.append(new_post)
