@@ -10,9 +10,10 @@ import os, shutil
 app = FastAPI(
     title="FastAPI",
     version="0.1.0",
-    docs_url=None, 
+    root_path="/api",          # ← 關鍵：讓 /api/* 路由到 /posts 這些路由
+    docs_url="/docs", 
     openapi_url="/api/openapi.json",
-    redoc_url="/api/docs" 
+    redoc_url=None
 )
 
 
@@ -103,7 +104,7 @@ def create_post(
             path = os.path.join(UPLOAD_DIR, filename)
             with open(path, "wb") as f:
                 f.write(data)
-            image_url = f"/api/static/{filename}"
+            image_url = f"/static/{filename}"
 
     new_post = Post(
         id=post_id_counter,
@@ -151,7 +152,7 @@ def delete_post(post_id: int):
 
     # ✅ 這裡前綴要跟新增時一致：/api/static/
     if target.image_url and target.image_url.startswith("/api/static/"):
-        filename = target.image_url.replace("/api/static/", "")
+        filename = target.image_url.replace("/static/", "")
         path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(path):
             try:
