@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, Form
+from fastapi import FastAPI, UploadFile, Form, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -69,7 +69,7 @@ def create_post(
     author: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
-    image: Optional[UploadFile] = None
+    image: UploadFile | None = File(None)   
 ):
     global post_id_counter
     image_url = None
