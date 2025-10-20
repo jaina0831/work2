@@ -1,11 +1,6 @@
 {
-  "functions": {
-    "cat-api/main.py": { "runtime": "python3.11" }
-  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/cat-api/main.py" },
-    { "source": "/openapi.json", "destination": "/cat-api/main.py" },
-    { "source": "/(docs|redoc)(.*)", "destination": "/cat-api/main.py" }
+    { "source": "/api/(.*)", "destination": "/api/main.py" }
   ],
   "redirects": [
     { "source": "/docs", "destination": "/api/docs", "permanent": false }
