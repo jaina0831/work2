@@ -7,6 +7,7 @@ from datetime import datetime
 from supabase import create_client, Client
 import os, shutil
 
+
 app = FastAPI(
     title="FastAPI",
     version="0.1.0",
@@ -90,21 +91,36 @@ def create_post(
     global post_id_counter
 
     image_url = None
-    if image:
-        data = image.file.read()
-        filename = f"{post_id_counter}_{int(datetime.utcnow().timestamp())}_{image.filename}"
 
-        if supabase:
-            supabase.storage.from_(BUCKET).upload(
-                filename, data, {"contentType": image.content_type, "upsert": True}
-            )
-            image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
-        else:
-            # 沒設環境變數才退回 /tmp（非持久）
-            path = os.path.join(UPLOAD_DIR, filename)
-            with open(path, "wb") as f:
-                f.write(data)
-            image_url = f"/api/static/{filename}"
+    try:
+        if image:
+            data = image.file.read()
+            filename = f"{post_id_counter}_{int(datetime.utcnow().timestamp())}_{image.filename}"
+
+            # 優先走 Supabase
+            if supabase is not None:
+                try:
+                    supabase.storage.from_(BUCKET).upload(
+                        filename,
+                        data,
+                        {"contentType": image.content_type, "upsert": True}
+                    )
+                    image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
+                except Exception as e:
+                    print("⚠️ Supabase upload failed:", e)
+                    image_url = None
+
+            # 如果 Supabase 沒設成功，就存 /tmp/uploads
+            if image_url is None:
+                os.makedirs(UPLOAD_DIR, exist_ok=True)
+                path = os.path.join(UPLOAD_DIR, filename)
+                with open(path, "wb") as f:
+                    f.write(data)
+                image_url = f"/api/static/{filename}"
+
+    except Exception as e:
+        print("❌ Image upload error:", e)
+        image_url = None
 
     new_post = Post(
         id=post_id_counter,
@@ -116,9 +132,11 @@ def create_post(
         created_at=datetime.utcnow(),
         comments=[]
     )
+
     post_id_counter += 1
     posts.append(new_post)
     return new_post
+
 
 @app.post("/posts/{post_id}/like", response_model=Post)
 def like_post(post_id: int):
