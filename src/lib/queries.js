@@ -14,13 +14,24 @@ export const usePost = (id) =>
   });
 
 // 新增貼文（含圖片）
-export const useCreatePost = () => {
+
+export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (fd) => (await api.post("/posts", fd)).data,
+    mutationFn: (fd) => api.post("/posts", fd),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
+    onError: (err) => {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        err?.message ||
+        "發佈失敗";
+      alert(msg);
+      console.error("POST /posts failed:", err);
+    },
   });
-};
+}
 
 // 按讚
 export const useLikePost = () => {

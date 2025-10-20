@@ -14,11 +14,14 @@ export default function PostForm() {
     fd.append("author", author);
     fd.append("title", title);
     fd.append("content", content);
-    if (image) fd.append("image", image);
-    createPost.mutate(fd, {
-      onSuccess: () => {
-        setTitle(""); setContent(""); setImage(null);
-      }
+    if (image) fd.append("image", image); // 欄位名一定要 "image"
+
+  console.log("→ sending /api/posts", [...fd.entries()]);
+  createPost.mutate(fd, {
+    onSuccess: () => {
+      setTitle(""); setContent(""); setImage(null);
+      if (fileRef.current) fileRef.current.value = "";
+      },
     });
   };
 

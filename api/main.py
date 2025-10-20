@@ -215,3 +215,10 @@ def add_comment(payload: CommentIn):
         "text": payload.text
     }).select("*").execute().data[0]
     return row
+
+def require_db():
+    if supabase is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Supabase not configured. Set SUPABASE_URL & SUPABASE_ANON_KEY on Vercel and redeploy."
+        )
