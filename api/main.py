@@ -104,7 +104,7 @@ def create_post(
             path = os.path.join(UPLOAD_DIR, filename)
             with open(path, "wb") as f:
                 f.write(data)
-            image_url = f"/static/{filename}"
+            image_url = f"/api/static/{filename}"
 
     new_post = Post(
         id=post_id_counter,
@@ -152,7 +152,7 @@ def delete_post(post_id: int):
 
     # ✅ 這裡前綴要跟新增時一致：/api/static/
     if target.image_url and target.image_url.startswith("/api/static/"):
-        filename = target.image_url.replace("/static/", "")
+        filename = target.image_url.replace("/api/static/", "")
         path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(path):
             try:
