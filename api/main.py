@@ -88,24 +88,23 @@ def create_post(
     image: UploadFile | None = File(None)
 ):
     global post_id_counter
-    image_url = None
 
-    # ←←← 這裡一定要跟上面同一層再多4個空白
+    image_url = None
     if image:
         data = image.file.read()
-filename = f"{post_id_counter}_{int(datetime.utcnow().timestamp())}_{image.filename}"
+        filename = f"{post_id_counter}_{int(datetime.utcnow().timestamp())}_{image.filename}"
 
-if supabase:
-    supabase.storage.from_("images").upload(
-        filename, data, {"contentType": image.content_type, "upsert": True}
-    )
-    image_url = supabase.storage.from_("images").get_public_url(filename)
-else:
-    # 沒設環境變數才退回 /tmp（非持久）
-    path = os.path.join(UPLOAD_DIR, filename)
-    with open(path, "wb") as f:
-        f.write(data)
-    image_url = f"/api/static/{filename}"
+        if supabase:
+            supabase.storage.from_(BUCKET).upload(
+                filename, data, {"contentType": image.content_type, "upsert": True}
+            )
+            image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
+        else:
+            # 沒設環境變數才退回 /tmp（非持久）
+            path = os.path.join(UPLOAD_DIR, filename)
+            with open(path, "wb") as f:
+                f.write(data)
+            image_url = f"/api/static/{filename}"
 
     new_post = Post(
         id=post_id_counter,
@@ -151,9 +150,9 @@ def delete_post(post_id: int):
     if not target:
         return {"ok": False, "error": "Post not found"}
 
-    # ✅ 這裡前綴要跟新增時一致：/api/static/
+    # 跟建立時一致：/api/static/
     if target.image_url and target.image_url.startswith("/api/static/"):
-    filename = target.image_url.replace("/api/static/", "")
+        filename = target.image_url.replace("/api/static/", "")
         path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(path):
             try:
