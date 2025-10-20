@@ -10,9 +10,9 @@ import os, shutil
 app = FastAPI(
     title="FastAPI",
     version="0.1.0",
-    docs_url="/api/docs",
+    docs_url=None, 
     openapi_url="/api/openapi.json",
-    redoc_url=None
+    redoc_url="/api/docs" 
 )
 
 
