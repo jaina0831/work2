@@ -84,24 +84,27 @@ def create_post(
     author: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
-    image: UploadFile | None = File(None)   
+    image: UploadFile | None = File(None)
 ):
     global post_id_counter
     image_url = None
 
-   if image:
-    data = image.file.read()
-    filename = f"{post_id_counter}_{image.filename}"
-    if supabase:
-        supabase.storage.from_(BUCKET).upload(filename, data, {"contentType": image.content_type})
-        image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
-    else:
-        # fallback：存到 /tmp，回 /api/static/...（示範用；serverless 非長久）
-        path = os.path.join(UPLOAD_DIR, filename)
-        with open(path, "wb") as f:
-            f.write(data)
-        image_url = f"/api/static/{filename}"
-        
+    # ←←← 這裡一定要跟上面同一層再多4個空白
+    if image:
+        data = image.file.read()
+        filename = f"{post_id_counter}_{image.filename}"
+        if supabase:
+            supabase.storage.from_(BUCKET).upload(
+                filename, data, {"contentType": image.content_type}
+            )
+            image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
+        else:
+            # fallback：存到 /tmp，回 /api/static/...（serverless 非長久）
+            path = os.path.join(UPLOAD_DIR, filename)
+            with open(path, "wb") as f:
+                f.write(data)
+            image_url = f"/api/static/{filename}"
+
     new_post = Post(
         id=post_id_counter,
         author=author,
@@ -145,12 +148,17 @@ def delete_post(post_id: int):
     target = next((p for p in posts if p.id == post_id), None)
     if not target:
         return {"ok": False, "error": "Post not found"}
-    if target.image_url and target.image_url.startswith("/static/"):
-        filename = target.image_url.replace("/static/", "")
+
+    # ✅ 這裡前綴要跟新增時一致：/api/static/
+    if target.image_url and target.image_url.startswith("/api/static/"):
+        filename = target.image_url.replace("/api/static/", "")
         path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(path):
-            try: os.remove(path)
-            except Exception: pass
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
     posts = [p for p in posts if p.id != post_id]
     comments = [c for c in comments if c.post_id != post_id]
     return {"ok": True}
