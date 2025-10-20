@@ -2,40 +2,35 @@ from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, List
-from urllib.parse import urlparse
+from typing import Optional, List, Literal
 from datetime import datetime
 import os, shutil
 
-app = FastAPI()
+app = FastAPI(title="FastAPI", version="0.1.0")
 
-# 允許前端跨網域請求
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
-# === 模擬資料 ===
+# in-memory 資料
 posts: List["Post"] = []
 comments: List["Comment"] = []
 post_id_counter = 1
 comment_id_counter = 1
 
-UPLOAD_DIR = "uploads"
+# ✅ Vercel 可寫路徑：/tmp
+UPLOAD_DIR = "/tmp/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="static")
 
-# === 資料模型 ===
 class Comment(BaseModel):
     id: int
     post_id: int
     author: str
     text: str
     created_at: datetime
-
 
 class CommentIn(BaseModel):
     post_id: int
@@ -51,15 +46,16 @@ class Post(BaseModel):
     likes: int = 0
     created_at: datetime
     comments: List[Comment] = []
+    type: Literal["shelter","cafe"] = "shelter"
+    name: str = "untitled"
+    lat: float = 0.0
+    lng: float = 0.0
+    addr: str = ""
 
-# === API ===
-
-# 取得所有貼文（新到舊排序）
 @app.get("/posts", response_model=List[Post])
 def list_posts():
     return sorted(posts, key=lambda p: p.created_at, reverse=True)
 
-# 取得單篇貼文
 @app.get("/posts/{post_id}", response_model=Post)
 def get_post(post_id: int):
     for p in posts:
@@ -67,15 +63,12 @@ def get_post(post_id: int):
             return p
     raise RuntimeError("Post not found")
 
-
-# 新增貼文
 @app.post("/posts", response_model=Post)
 def create_post(
     author: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
     image: Optional[UploadFile] = None
-
 ):
     global post_id_counter
     image_url = None
@@ -86,20 +79,13 @@ def create_post(
         image_url = f"/static/{image.filename}"
 
     new_post = Post(
-        id=post_id_counter,
-        author=author,
-        title=title,
-        content=content,
-        image_url=image_url,
-        likes=0,
-        created_at=datetime.utcnow(),
-        comments=[]
+        id=post_id_counter, author=author, title=title, content=content,
+        image_url=image_url, likes=0, created_at=datetime.utcnow(), comments=[]
     )
     post_id_counter += 1
     posts.append(new_post)
     return new_post
 
-# 按讚
 @app.post("/posts/{post_id}/like", response_model=Post)
 def like_post(post_id: int):
     for p in posts:
@@ -108,7 +94,6 @@ def like_post(post_id: int):
             return p
     raise RuntimeError("Post not found")
 
-# 新增留言
 @app.post("/comments", response_model=Comment)
 def add_comment(payload: CommentIn):
     global comment_id_counter
@@ -127,26 +112,15 @@ def add_comment(payload: CommentIn):
 @app.delete("/posts/{post_id}")
 def delete_post(post_id: int):
     global posts, comments
-    # 找到要刪的貼文
-    target = None
-    for p in posts:
-        if p.id == post_id:
-            target = p
-            break
+    target = next((p for p in posts if p.id == post_id), None)
     if not target:
         return {"ok": False, "error": "Post not found"}
-
-    # 刪除圖片檔（若存在）
     if target.image_url and target.image_url.startswith("/static/"):
         filename = target.image_url.replace("/static/", "")
         path = os.path.join(UPLOAD_DIR, filename)
         if os.path.exists(path):
-            try:
-                os.remove(path)
-            except Exception:
-                pass
-
-    # 刪除該貼文與其留言
+            try: os.remove(path)
+            except Exception: pass
     posts = [p for p in posts if p.id != post_id]
     comments = [c for c in comments if c.post_id != post_id]
     return {"ok": True}
