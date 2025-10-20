@@ -93,18 +93,19 @@ def create_post(
     # ←←← 這裡一定要跟上面同一層再多4個空白
     if image:
         data = image.file.read()
-        filename = f"{post_id_counter}_{image.filename}"
-        if supabase:
-            supabase.storage.from_(BUCKET).upload(
-                filename, data, {"contentType": image.content_type}
-            )
-            image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
-        else:
-            # fallback：存到 /tmp，回 /api/static/...（serverless 非長久）
-            path = os.path.join(UPLOAD_DIR, filename)
-            with open(path, "wb") as f:
-                f.write(data)
-            image_url = f"/api/static/{filename}"
+filename = f"{post_id_counter}_{int(datetime.utcnow().timestamp())}_{image.filename}"
+
+if supabase:
+    supabase.storage.from_("images").upload(
+        filename, data, {"contentType": image.content_type, "upsert": True}
+    )
+    image_url = supabase.storage.from_("images").get_public_url(filename)
+else:
+    # 沒設環境變數才退回 /tmp（非持久）
+    path = os.path.join(UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(data)
+    image_url = f"/api/static/{filename}"
 
     new_post = Post(
         id=post_id_counter,
