@@ -5,6 +5,7 @@ from pydantic import BaseModel, File
 from typing import Optional, List, Literal
 from datetime import datetime
 from supabase import create_client, Client
+from uuid import uuid4
 import os, shutil
 
 app = FastAPI(
@@ -86,11 +87,16 @@ def create_post(
     image_url = None
 
     if image:
-        data = image.file.read()
-        filename = f"{post_id_counter}_{image.filename}"
-        supabase.storage.from_(BUCKET).upload(filename, data, {"contentType": image.content_type})
-        image_url = supabase.storage.from_(BUCKET).get_public_url(filename)
+         data = image.file.read()
+    # ❶ 真的唯一的檔名：時間戳 + uuid + 原檔名
+    filename = f"{int(datetime.utcnow().timestamp())}_{uuid4().hex}_{image.filename}"
 
+    # ❷ 加 upsert=True，避免再次同名引發 409
+    supabase.storage.from_(BUCKET).upload(
+        filename,
+        data,
+        {"contentType": image.content_type or "application/octet-stream", "upsert": True}
+    )
     new_post = Post(
         id=post_id_counter,
         author=author,
