@@ -35,9 +35,16 @@ export function useCreatePost() {
     mutationFn: (fd) => api.post("/posts", fd),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
     onError: (err) => {
-      const msg = pickErrorMessage(err);
-      alert(msg);                 // ← 不會再是 [object Object]
-      console.error("POST /posts failed:", err);
+      console.error("❌ POST /posts failed:", err);
+
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        err?.response?.data ||
+        err?.message ||
+        "未知錯誤";
+
+      alert("發佈失敗：" + message);
     },
   });
 }
