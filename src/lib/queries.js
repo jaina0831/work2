@@ -15,19 +15,28 @@ export const usePost = (id) =>
 
 // 新增貼文（含圖片）
 
+function pickErrorMessage(err) {
+  const res = err?.response;
+  const data = res?.data;
+  if (data?.detail) return data.detail;
+  if (data?.message) return data.message;
+  if (typeof data === "string") return data;
+
+  // 不是字串就把它序列化
+  try { return JSON.stringify(data ?? {}, null, 2); } catch (_) {}
+
+  // 退回 axios 的 message
+  return err?.message || "發佈失敗";
+}
+
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (fd) => api.post("/posts", fd),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
     onError: (err) => {
-      const msg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.response?.data?.detail ||
-        err?.message ||
-        "發佈失敗";
-      alert(msg);
+      const msg = pickErrorMessage(err);
+      alert(msg);                 // ← 不會再是 [object Object]
       console.error("POST /posts failed:", err);
     },
   });
