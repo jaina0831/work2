@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useState, useRef } from "react";
 import { useCreatePost } from "../lib/queries";
 
 export default function PostForm() {
