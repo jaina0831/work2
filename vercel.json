@@ -1,9 +1,11 @@
 {
+  "functions": {
+    "api/main.py": { "runtime": "python3.11" }
+  },
   "rewrites": [
-    { "source": "/api/(.*)",          "destination": "/api/main.py" },
-    { "source": "/openapi.json",      "destination": "/api/main.py" },
-    { "source": "/(docs|redoc)(.*)",  "destination": "/api/main.py" },
-    { "source": "/(.*)",              "destination": "/" }
+    { "source": "/api",      "destination": "/api/main.py" },
+    { "source": "/api/(.*)", "destination": "/api/main.py" },
+    { "source": "/(.*)",     "destination": "/" }
   ],
   "redirects": [
     { "source": "/docs", "destination": "/api/docs", "permanent": false }
