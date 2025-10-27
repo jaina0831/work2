@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, Form, File, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal, Dict, Set
 from datetime import datetime
@@ -62,10 +63,10 @@ posts: List[Post] = []
 comments: List[Comment] = []
 post_id_counter = 1
 comment_id_counter = 1
-
+like_map: Dict[int, Set[str]] = {}
 # 同裝置只能按一次；再按一次 = 收回
 # 以 X-Client-Id 當 key：post_id -> set(client_ids)
-like_map: Dict[int, Set[str]] = {}
+
 
 # ---- Health ----
 @app.get("/health")
@@ -95,7 +96,6 @@ def create_post(
     image: Optional[UploadFile] = File(None),
 ):
     global post_id_counter
-
     image_url = None
     if image:
         # 存到 /tmp/uploads，並透過 /static 提供
@@ -149,7 +149,6 @@ def like_post(
 @app.post("/comments", response_model=Comment)
 def add_comment(payload: CommentIn):
     global comment_id_counter
-
     if not any(p.id == payload.post_id for p in posts):
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -173,7 +172,6 @@ def add_comment(payload: CommentIn):
 @app.delete("/posts/{post_id}")
 def delete_post(post_id: int):
     global posts, comments
-
     target = next((p for p in posts if p.id == post_id), None)
     if not target:
         return {"ok": False, "error": "Post not found"}
@@ -194,3 +192,11 @@ def delete_post(post_id: int):
     like_map.pop(post_id, None)
 
     return {"ok": True}
+
+    @app.get("/")
+def root_ok():
+    return {"ok": True}
+
+@app.get("/__routes")
+def list_routes():
+    return sorted([r.path for r in app.router.routes])
