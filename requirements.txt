@@ -1,4 +1,2 @@
-fastapi
-uvicorn
-pydantic
-python-multipart
+fastapi==0.115.0
+uvicorn==0.30.0
