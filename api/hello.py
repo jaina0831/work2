@@ -1,4 +1,9 @@
 # api/hello.py
-def handler(request):
-    # 一定回傳 (status_code:int, headers:list[tuple[bytes,bytes]], body:bytes)
-    return 200, [(b"content-type", b"text/plain")], b"OK: /api/hello"
+from http.server import BaseHTTPRequestHandler
+
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("content-type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"OK")
