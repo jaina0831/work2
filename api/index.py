@@ -1,166 +1,157 @@
-from fastapi import FastAPI, UploadFile, Form, Header, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Set
-from datetime import datetime
-import os, shutil
+from typing import Optional, List
+from uuid import uuid4
+import os
 
-app = FastAPI(title="cats-api")
+from supabase import create_client, Client
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+    raise RuntimeError("Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY")
+
+sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
 
-# Vercel 可寫入路徑
-UPLOAD_DIR = "/tmp/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="static")
-
-# ------- Models -------
-class Comment(BaseModel):
+# --------- schemas ----------
+class CommentOut(BaseModel):
     id: int
     post_id: int
     author: str
     text: str
-    created_at: datetime
+    created_at: str
 
-class Post(BaseModel):
+class PostOut(BaseModel):
     id: int
     author: str
     title: str
     content: str
     image_url: Optional[str] = None
-    likes: int = 0
-    created_at: datetime
-    comments: List[Comment] = []
-    # 你前端用到的地圖欄位先保留預設
-    type: str = "shelter"
-    name: str = "untitled"
-    lat: float = 0.0
-    lng: float = 0.0
-    addr: str = ""
+    likes_count: int
+    created_at: str
+    comments: List[CommentOut] = []
 
-# ------- In-Memory State -------
-posts: List[Post] = []
-comments: List[Comment] = []
-post_id_counter = 1
-comment_id_counter = 1
+# --------- helpers ----------
+def _row_to_post_with_comments(row) -> PostOut:
+    # 取 comments
+    comments = (
+        sb.table("comments")
+        .select("*")
+        .eq("post_id", row["id"])
+        .order("created_at", desc=True)
+        .execute()
+    ).data
+    return PostOut(
+        id=row["id"],
+        author=row["author"],
+        title=row["title"],
+        content=row["content"],
+        image_url=row.get("image_url"),
+        likes_count=row["likes_count"],
+        created_at=row["created_at"],
+        comments=comments or [],
+    )
 
-# 每篇貼文的已點讚 set：{post_id: {client_id,...}}
-liked_by: Dict[int, Set[str]] = {}
-
-# ------- Routes -------
+# --------- routes ----------
 @app.get("/health")
 def health():
     return {"ok": True}
 
-@app.get("/posts", response_model=List[Post])
+@app.get("/posts", response_model=List[PostOut])
 def list_posts():
-    return sorted(posts, key=lambda p: p.created_at, reverse=True)
+    rows = (
+        sb.table("posts")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    ).data
+    return [_row_to_post_with_comments(r) for r in (rows or [])]
 
-@app.get("/posts/{post_id}", response_model=Post)
+@app.get("/posts/{post_id}", response_model=PostOut)
 def get_post(post_id: int):
-    p = next((x for x in posts if x.id == post_id), None)
-    if not p:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return p
+    row = sb.table("posts").select("*").eq("id", post_id).single().execute().data
+    if not row:
+        raise HTTPException(404, "Post not found")
+    return _row_to_post_with_comments(row)
 
-@app.post("/posts", response_model=Post)
-def create_post(
+@app.post("/posts", response_model=PostOut)
+async def create_post(
     author: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
-    image: Optional[UploadFile] = None
+    image: Optional[UploadFile] = File(None)
 ):
-    global post_id_counter
     image_url = None
-
     if image:
-        # 儲存到 /tmp，並透過 /static/ 提供
-        safe_name = image.filename or f"img_{post_id_counter}.bin"
-        file_path = os.path.join(UPLOAD_DIR, safe_name)
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(image.file, f)
-        image_url = f"/static/{safe_name}"
+        ext = os.path.splitext(image.filename)[1].lower() or ".jpg"
+        key = f"{uuid4().hex}{ext}"
+        data = await image.read()
+        # 上傳到 bucket 'images'
+        up = sb.storage.from_("images").upload(key, data, file_options={"contentType": image.content_type})
+        if up is None or getattr(up, "error", None):
+            raise HTTPException(500, f"upload error: {getattr(up,'error',None)}")
+        # 取得 public URL
+        image_url = sb.storage.from_("images").get_public_url(key)
 
-    new_post = Post(
-        id=post_id_counter,
-        author=author,
-        title=title,
-        content=content,
-        image_url=image_url,
-        likes=0,
-        created_at=datetime.utcnow(),
-        comments=[],
-    )
-    post_id_counter += 1
-    posts.append(new_post)
-    return new_post
+    inserted = (
+        sb.table("posts").insert({
+            "author": author, "title": title, "content": content,
+            "image_url": image_url, "likes_count": 0
+        }).select("*").single().execute()
+    ).data
+    return _row_to_post_with_comments(inserted)
 
-@app.post("/posts/{post_id}/like", response_model=Post)
+@app.post("/posts/{post_id}/like", response_model=PostOut)
 def toggle_like(post_id: int, x_client_id: Optional[str] = Header(None)):
-    """同一台電腦（以 X-Client-Id 辨識）只能按一次，再按會收回"""
-    p = next((x for x in posts if x.id == post_id), None)
-    if not p:
-        raise HTTPException(status_code=404, detail="Post not found")
+    if not x_client_id:
+        raise HTTPException(400, "Missing X-Client-Id")
 
-    client = x_client_id or "anon"
-    s = liked_by.setdefault(post_id, set())
-    if client in s:
-        s.remove(client)
-        p.likes = max(0, p.likes - 1)
+    # 是否已按過？
+    liked = (
+        sb.table("likes")
+        .select("*")
+        .eq("post_id", post_id)
+        .eq("device_id", x_client_id)
+        .maybe_single()
+        .execute()
+    ).data
+
+    if liked:
+        # 取消喜歡
+        sb.table("likes").delete().eq("id", liked["id"]).execute()
+        sb.table("posts").update({"likes_count": sb.rpc("coalesce", {"value": "likes_count-1"})}).eq("id", post_id).execute()
+        # 上面那行用 rpc 不直觀，改為安全做法：讀值-1
+        post = sb.table("posts").select("*").eq("id", post_id).single().execute().data
+        sb.table("posts").update({"likes_count": max(0, (post["likes_count"] or 0) - 1)}).eq("id", post_id).execute()
     else:
-        s.add(client)
-        p.likes += 1
-    return p
+        # 新增喜歡
+        sb.table("likes").insert({"post_id": post_id, "device_id": x_client_id}).execute()
+        post = sb.table("posts").select("*").eq("id", post_id).single().execute().data
+        sb.table("posts").update({"likes_count": (post["likes_count"] or 0) + 1}).eq("id", post_id).execute()
+
+    row = sb.table("posts").select("*").eq("id", post_id).single().execute().data
+    return _row_to_post_with_comments(row)
 
 class CommentIn(BaseModel):
     post_id: int
     author: str
     text: str
 
-@app.post("/comments", response_model=Comment)
+@app.post("/comments", response_model=CommentOut)
 def add_comment(payload: CommentIn):
-    global comment_id_counter
-    p = next((x for x in posts if x.id == payload.post_id), None)
-    if not p:
-        raise HTTPException(status_code=404, detail="Post not found")
-
-    c = Comment(
-        id=comment_id_counter,
-        post_id=payload.post_id,
-        author=payload.author,
-        text=payload.text,
-        created_at=datetime.utcnow(),
-    )
-    comment_id_counter += 1
-    comments.append(c)
-    p.comments.append(c)
-    return c
-
-@app.delete("/posts/{post_id}")
-def delete_post(post_id: int):
-    global posts, comments
-    p = next((x for x in posts if x.id == post_id), None)
-    if not p:
-        return {"ok": False, "error": "Post not found"}
-
-    # 刪掉已上傳圖片
-    if p.image_url and p.image_url.startswith("/static/"):
-        fn = p.image_url.replace("/static/", "")
-        fp = os.path.join(UPLOAD_DIR, fn)
-        if os.path.exists(fp):
-            try:
-                os.remove(fp)
-            except:
-                pass
-
-    posts = [x for x in posts if x.id != post_id]
-    comments = [c for c in comments if c.post_id != post_id]
-    liked_by.pop(post_id, None)
-
-    return {"ok": True}
-
+    # 確認 post 存在
+    exists = sb.table("posts").select("id").eq("id", payload.post_id).maybe_single().execute().data
+    if not exists:
+        raise HTTPException(404, "Post not found")
+    inserted = (
+        sb.table("comments").insert(payload.__dict__).select("*").single().execute()
+    ).data
+    return inserted
