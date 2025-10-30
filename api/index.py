@@ -17,19 +17,14 @@ sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    # 明確允許本機 & 你的 Render 網域
     allow_origins=[
-        "http://localhost:5173",
-        "https://work2-enfq.onrender.com",
+        "https://work2-enfq.onrender.com",   # 後端自己
+        "https://work2.vercel.app",          # 正式 domain (之後用)
+        "http://localhost:5173",             # 本地 Vite
     ],
-    # 允許所有 *.vercel.app（preview 網域每次都變）
-    allow_origin_regex=r"https://.*\.vercel\.app$",
-
-    allow_credentials=True,  # 你有帶自訂 header & 之後可能要帶 cookie 就保留 True
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],     # 或至少包含 "Content-Type", "X-Client-Id"
-    expose_headers=["*"],
-    max_age=86400,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --------- schemas ----------
