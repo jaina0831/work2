@@ -18,8 +18,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://work2-k3q5d0cox-jaina0831s-projects.vercel.app",  # Vercel 前端
-        "http://localhost:5173",  # 本機開發
+        "https://work2-enfq.onrender.com",   # 後端自己
+        "https://work2.vercel.app",          # 正式 domain (之後用)
+        "http://localhost:5173",             # 本地 Vite
     ],
     allow_credentials=True,
     allow_methods=["*"],
