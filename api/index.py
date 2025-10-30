@@ -17,14 +17,21 @@ sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
+    # 允許你所有 Vercel preview 子網域（每次部署都會變）
+    allow_origin_regex=r"https://.*\.vercel\.app$",
+    # 另外把本機與後端自己的網域也加進去
     allow_origins=[
-        "https://work2-enfq.onrender.com",   # 後端自己
-        "https://work2.vercel.app",          # 正式 domain (之後用)
-        "http://localhost:5173",             # 本地 Vite
+        "http://localhost:5173",
+        "https://work2-enfq.onrender.com",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    # 預檢會用到 OPTIONS，這裡要允許
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    # 你有自訂 header：X-Client-Id，這裡放通
     allow_headers=["*"],
+    # 可選：要不要讓瀏覽器能讀部分回應標頭
+    expose_headers=["*"],
+    max_age=86400,
 )
 
 # --------- schemas ----------
