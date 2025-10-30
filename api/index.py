@@ -17,8 +17,13 @@ sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=[
+        "https://work2-k3q5d0cox-jaina0831s-projects.vercel.app",  # Vercel 前端
+        "http://localhost:5173",  # 本機開發
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --------- schemas ----------
