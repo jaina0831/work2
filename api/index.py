@@ -98,30 +98,33 @@ async def create_post(
         raise HTTPException(500, "Supabase not configured")
     try:
         image_url = None
-        if image:
-            # ---- Storage 上傳（bucket: images）----
-            ext = os.path.splitext(image.filename)[1].lower() or ".jpg"
-            key = f"{uuid4().hex}{ext}"
-            data = await image.read()
-            ct = image.content_type or "application/octet-stream"
-            up = sb.storage.from_("images").upload(key, data, file_options={"contentType": ct})
-            # supabase-py v2 可能回傳 dict-like
-            if not up or (isinstance(up, dict) and up.get("error")):
-                logger.error("upload failed: %s", up)
-                raise HTTPException(500, "Image upload failed")
-            pub = sb.storage.from_("images").get_public_url(key)
-            image_url = pub if isinstance(pub, str) else getattr(pub, "public_url", None) or pub.get("publicUrl")
+if image:
+    ext = os.path.splitext(image.filename)[1].lower() or ".jpg"
+    key = f"{uuid4().hex}{ext}"
+    data = await image.read()
+
+    up = sb.storage.from_("images").upload(key, data, file_options={"contentType": image.content_type})
+    # 有些版本回傳 dict / object，這裡只檢查常見 error 欄位
+    if getattr(up, "error", None) or (isinstance(up, dict) and up.get("error")):
+        raise HTTPException(500, f"upload error: {getattr(up,'error',None) or up.get('error')}")
+
+    pub = sb.storage.from_("images").get_public_url(key)
+    # 可能是 str，也可能是 dict 包 publicUrl
+    image_url = pub if isinstance(pub, str) else (pub.get("publicUrl") if isinstance(pub, dict) else None)
 
         # ---- 插入 posts（確保這些欄位存在）----
-        ins = sb.table("posts").insert({
+        resp = sb.table("posts").insert({
             "author": author,
             "title": title,
             "content": content,
             "image_url": image_url,
-            "likes_count": 0
-            # "created_at" 交給資料庫 default now()
-        }).select("*").single().execute()
-        row = ins.data
+            "likes_count": 0  # created_at 用 DB 預設 now()
+        }).execute()
+
+        if not resp.data:
+            raise HTTPException(500, "insert posts returned no data")
+
+        row = resp.data[0]
         return _row_to_post_with_comments(row)
     except HTTPException:
         raise
@@ -169,8 +172,10 @@ def add_comment(payload: CommentIn):
         exists = sb.table("posts").select("id").eq("id", payload.post_id).maybe_single().execute().data
         if not exists:
             raise HTTPException(404, "Post not found")
-        ins = sb.table("comments").insert(payload.__dict__).select("*").single().execute()
-        return ins.data
+        resp = sb.table("comments").insert(payload.__dict__).execute()
+        if not resp.data:
+            raise HTTPException(500, "insert comments returned no data")
+        return resp.data[0]
     except HTTPException:
         raise
     except Exception:
