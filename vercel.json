@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://work2-enfq.onrender.com/$1" }
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
