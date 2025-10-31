@@ -91,45 +91,53 @@ async def create_post(
     author: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
-    image: Optional[UploadFile] = File(None)
+    image: UploadFile | None = File(None),
 ):
-    if sb is None:
-        logger.error("POST /posts with sb=None")
-        raise HTTPException(500, "Supabase not configured")
     try:
         image_url = None
-if image:
-    ext = os.path.splitext(image.filename)[1].lower() or ".jpg"
-    key = f"{uuid4().hex}{ext}"
-    data = await image.read()
 
-    up = sb.storage.from_("images").upload(key, data, file_options={"contentType": image.content_type})
-    # 有些版本回傳 dict / object，這裡只檢查常見 error 欄位
-    if getattr(up, "error", None) or (isinstance(up, dict) and up.get("error")):
-        raise HTTPException(500, f"upload error: {getattr(up,'error',None) or up.get('error')}")
+        if image:
+            # 1) 確保 bucket 存在且 Public（在 Supabase 後台建一次就好）
+            # 2) 隨機檔名避免 409
+            ext = os.path.splitext(image.filename)[1].lower() or ".jpg"
+            key = f"{uuid4().hex}{ext}"
+            data = await image.read()
 
-    pub = sb.storage.from_("images").get_public_url(key)
-    # 可能是 str，也可能是 dict 包 publicUrl
-    image_url = pub if isinstance(pub, str) else (pub.get("publicUrl") if isinstance(pub, dict) else None)
+            up_res = sb.storage.from_("images").upload(
+                key,
+                data,
+                file_options={"contentType": image.content_type or "application/octet-stream"},
+            )
+            # up_res 在不同版本可能是物件或 dict，這邊只要沒有 error 就當成功
+            if getattr(up_res, "error", None) or (isinstance(up_res, dict) and up_res.get("error")):
+                raise HTTPException(500, f"upload error: {getattr(up_res,'error',None) or up_res.get('error')}")
 
-        # ---- 插入 posts（確保這些欄位存在）----
-        resp = sb.table("posts").insert({
+            pub = sb.storage.from_("images").get_public_url(key)
+            image_url = pub if isinstance(pub, str) else (pub.get("publicUrl") if isinstance(pub, dict) else None)
+
+        # 直接 execute 取 data[0]，避免 .select().single() 版本差異
+        ins = sb.table("posts").insert({
             "author": author,
             "title": title,
             "content": content,
             "image_url": image_url,
-            "likes_count": 0  # created_at 用 DB 預設 now()
+            "likes_count": 0,
+            # created_at 讓 DB default now() 自己填
         }).execute()
 
-        if not resp.data:
+        if not ins.data:
             raise HTTPException(500, "insert posts returned no data")
 
-        row = resp.data[0]
+        row = ins.data[0]
         return _row_to_post_with_comments(row)
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("POST /posts failed")
+        # 讓你在 Render Logs 看到確切原因
+        import traceback, sys
+        print("POST /posts failed:", e, file=sys.stderr)
+        traceback.print_exc()
         raise HTTPException(500, "internal_error")
 
 @app.post("/posts/{post_id}/like", response_model=PostOut)
