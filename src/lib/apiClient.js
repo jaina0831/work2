@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "/api",   // ← 不再用外部域名，交給 vercel.json 代理
+  baseURL: "https://work2-enfq.onrender.com",   // ← 不再用外部域名，交給 vercel.json 代理
 });
 
 // 保留你的 X-Client-Id
