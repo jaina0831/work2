@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from uuid import uuid4
@@ -9,7 +10,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://work2-phi.vercel.app",  # 你的前端正式網域（Vercel）
+        "http://localhost:5173",         # 本機開發
+    ],
+    allow_credentials=True,
+    # 預檢會用到 OPTIONS，這裡一定要允許
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],   # 你有自訂 X-Client-Id，放通較簡單
+    expose_headers=["*"],
+    max_age=86400,
+)
 # ---- Supabase init (安全防呆版) ----
 from supabase import create_client, Client
 sb: Optional[Client] = None
