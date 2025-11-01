@@ -155,35 +155,57 @@ async def create_post(
 
 @app.post("/posts/{post_id}/like", response_model=PostOut)
 def toggle_like(post_id: int, x_client_id: Optional[str] = Header(None)):
-    if sb is None:
-        raise HTTPException(500, "Supabase not configured")
     if not x_client_id:
         raise HTTPException(400, "Missing X-Client-Id")
-    try:
-        liked = sb.table("likes").select("*").eq("post_id", post_id).eq("device_id", x_client_id).maybe_single().execute().data
-        post = sb.table("posts").select("*").eq("id", post_id).single().execute().data
-        if not post:
-            raise HTTPException(404, "Post not found")
 
-        if liked:
-            sb.table("likes").delete().eq("id", liked["id"]).execute()
-            sb.table("posts").update({"likes_count": max(0, (post.get("likes_count") or 0) - 1)}).eq("id", post_id).execute()
-        else:
-            sb.table("likes").insert({"post_id": post_id, "device_id": x_client_id}).execute()
-            sb.table("posts").update({"likes_count": (post.get("likes_count") or 0) + 1}).eq("id", post_id).execute()
+    # 1) 貼文是否存在
+    post = (
+        sb.table("posts")
+        .select("id")
+        .eq("id", post_id)
+        .maybe_single()
+        .execute()
+    ).data
+    if not post:
+        raise HTTPException(404, "Post not found")
 
-        row = sb.table("posts").select("*").eq("id", post_id).single().execute().data
-        return _row_to_post_with_comments(row)
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("POST /posts/{post_id}/like failed")
-        raise HTTPException(500, "internal_error")
+    # 2) 查該裝置是否已按過讚
+    liked = (
+        sb.table("likes")
+        .select("id")
+        .eq("post_id", post_id)
+        .eq("device_id", x_client_id)
+        .maybe_single()
+        .execute()
+    ).data
 
-class CommentIn(BaseModel):
-    post_id: int
-    author: str
-    text: str
+    if liked:
+        # 取消讚
+        sb.table("likes").delete().eq("id", liked["id"]).execute()
+    else:
+        # 新增讚（有唯一鍵保護，避免重複）
+        sb.table("likes").insert({"post_id": post_id, "device_id": x_client_id}).execute()
+
+    # 3) 用精確計數重算 likes_count
+    count_resp = (
+        sb.table("likes")
+        .select("id", count="exact")
+        .eq("post_id", post_id)
+        .execute()
+    )
+    likes_count = count_resp.count or 0
+
+    sb.table("posts").update({"likes_count": likes_count}).eq("id", post_id).execute()
+
+    # 4) 回傳完整貼文（含留言）
+    row = (
+        sb.table("posts")
+        .select("*")
+        .eq("id", post_id)
+        .single()
+        .execute()
+    ).data
+    return _row_to_post_with_comments(row)
 
 @app.post("/comments", response_model=CommentOut)
 def add_comment(payload: CommentIn):
