@@ -59,7 +59,7 @@ export default function PostCard({ post }) {
             className="btn btn-sm"
             onClick={() => like.mutate(post.id)}
           >
-            👍 {post.likes}
+            👍 {post.likes_count ?? 0}
           </button>
         </div>
 

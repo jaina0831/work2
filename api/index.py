@@ -202,3 +202,37 @@ def add_comment(payload: CommentIn):
     except Exception:
         logger.exception("POST /comments failed")
         raise HTTPException(500, "internal_error")
+
+@app.delete("/posts/{post_id}")
+def delete_post(post_id: int):
+
+    # 先查這篇文章是否存在
+    post = (
+        sb.table("posts")
+        .select("id, image_url")
+        .eq("id", post_id)
+        .single()
+        .execute()
+    ).data
+
+    if not post:
+        raise HTTPException(404, "Post not found")
+
+    # --- 刪除 likes ---
+    sb.table("likes").delete().eq("post_id", post_id).execute()
+
+    # --- 刪除 comments ---
+    sb.table("comments").delete().eq("post_id", post_id).execute()
+
+    # --- 刪除圖片 (若有) ---
+    image_url = post.get("image_url")
+    if image_url:
+        # Supabase 公開鏈結格式：
+        # https://<project>.supabase.co/storage/v1/object/public/images/<filename>
+        filename = image_url.split("/")[-1].split("?")[0]
+        sb.storage.from_("images").remove([filename])
+
+    # --- 刪除文章本身 ---
+    sb.table("posts").delete().eq("id", post_id).execute()
+
+    return {"status": "ok", "deleted_id": post_id}

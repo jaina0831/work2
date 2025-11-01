@@ -85,7 +85,7 @@ export default function PostDetail() {
             {/* 👍 + 💬 計數 */}
             <div className="flex items-center gap-4">
               <button className="btn btn-outline" onClick={() => like.mutate(post.id)}>
-                👍 {post.likes}
+              👍 {post.likes_count ?? 0}
               </button>
               <div className="inline-flex items-center gap-2 text-gray-700">
                 <span>💬</span>
