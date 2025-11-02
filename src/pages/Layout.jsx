@@ -21,7 +21,7 @@ export default function Layout() {
               首頁
             </NavLink>
             <NavLink to="/map" className={(s) => `${linkBase} ${active(s)}`}>
-             咖啡廳
+             地圖
             </NavLink>
             <NavLink to="/care" className={(s) => `${linkBase} ${active(s)}`}>
              知識
