@@ -5,6 +5,7 @@ import { Outlet, Link } from "react-router-dom";
 import AnimalCard from "../components/AnimalCard";
 import { useState } from "react";
 import { animalsData } from "../data/animals";
+import { Space } from "antd";
 
 export default function Report() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,7 +41,7 @@ export default function Report() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">可領養的動物 🐾</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">可領養的動物</h1>
 
       {/* ✅ 搜尋 + 篩選區塊 */}
       <div className="flex flex-wrap gap-4 mb-6 items-center justify-center p-4 ">
@@ -103,14 +104,18 @@ export default function Report() {
       <div className="flex justify-center mt-12 space-x-2">
         <button
           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          className="px-3 py-1  rounded bg-[#E7836F] hover:bg-[#c9604b] active:bg-[#c35741] transition
+          text-white !text-white"
         >
           上一頁
         </button>
+        <Space> </Space>
         <span>{currentPage} / {totalPages}</span>
+        <Space> </Space>
         <button
           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          className="px-3 py-1 rounded bg-[#E7836F] hover:bg-[#c9604b] active:bg-[#c35741] transition
+          text-white !text-white"
         >
           下一頁
         </button>

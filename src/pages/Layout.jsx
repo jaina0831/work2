@@ -1,9 +1,9 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const linkBase =
-  "text-gray-800 no-underline px-5 py-2 rounded-md transition-colors duration-200 hover:bg-gray-100 hover:text-black";
+  "text-gray-800 no-underline px-5 py-2 rounded-md transition-colors duration-200 hover:bg-[#e7b76f] hover:text-white";
 const active = ({ isActive }) =>
-  isActive ? "font-semibold bg-[#BB5500] text-white border-b-2 border-gray-400" : "";
+  isActive ? "font-semibold bg-[#c76c21] text-white border-b-2 border-gray-400" : "";
 
 export default function Layout() {
   return (
@@ -12,7 +12,7 @@ export default function Layout() {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-6xl w-full mx-auto px-6 py-3 flex items-center justify-between">
           <div className="text-2xl font-bold flex items-center gap-2">
-            🐾 野貓領地
+            🐾 浪浪領地
           </div>
 
           {/* 導覽列 */}
@@ -44,7 +44,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="bg-white border-t border-gray-200 py-3 text-center text-gray-600">
-        © 2025 野貓領地 | Hogwarts Coder · Slytherin
+        © 2025 浪浪領地 | Hogwarts Coder · Slytherin
       </footer>
     </div>
   );

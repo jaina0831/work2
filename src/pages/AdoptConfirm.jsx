@@ -25,15 +25,18 @@ export default function AdoptConfirm() {
       <div className="flex justify-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+          className="px-5 py-2  rounded-lg bg-[#e68673] hover:bg-[#c9604b] active:bg-[#c35741]
+                    transition
+                    text-white !text-white"
         >
           返回
         </button>
         <button
           onClick={handleConfirm}
-          className="px-5 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          className="px-5 py-2 rounded-lg bg-[#E7B76F] hover:bg-[#c76c21] active:bg-[#994400] transition
+                    text-white !text-white"
         >
-          確認領養 ✅
+          確認領養
         </button>
       </div>
     </div>

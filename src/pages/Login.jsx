@@ -23,7 +23,7 @@ const Login = () => {
   const [currentTab, setCurrentTab] = useState('signIn'); // 分頁狀態
 
   // 定義溫暖的主題顏色
-  const ACCENT_COLOR = '#B88C6E'; // 焦糖棕色
+  const ACCENT_COLOR = '#c76c21'; // 焦糖棕色
   const LIGHT_ACCENT_COLOR = '#D4A48A'; // 淺棕色
   const CARD_BG = '#FFF7E6'; // 奶油黃#FFF7E6
   const APP_BG = '#FDF8F0'; // 溫暖米白#FDF8F0
@@ -107,9 +107,9 @@ const Login = () => {
               alt="寵物之家標誌" 
               className="w-8 h-8 object-contain" // object-contain 確保圖片完整顯示
             />
-            <span className="text-3xl font-bold ml-2 text-gray-800">PETS' HOME</span> 
+            <span className="text-3xl font-bold ml-2 text-gray-800">浪浪主人</span> 
           </div>
-          <p className="text-sm text-gray-500 mb-6">您溫暖的寵物之家</p>
+          <p className="text-sm text-gray-500 mb-6">收養代替購買：給浪浪溫暖的家</p>
 
           {/* 登入 / 註冊 分頁切換 */}
           <div className="flex justify-center border-b border-gray-300 mb-8 text-sm font-semibold">
@@ -322,7 +322,7 @@ const Login = () => {
               type="submit"
               disabled={loading}
               // 溫暖焦糖色按鈕
-              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-lg text-lg font-bold text-white transition duration-300 focus:outline-none focus:ring-4 focus:ring-opacity-50 ${
+              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-lg text-lg font-bold text-white !text-white transition duration-300 focus:outline-none focus:ring-4 focus:ring-opacity-50 ${
                 loading 
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'hover:bg-opacity-90 transform hover:scale-[1.01] active:scale-[0.98]'
