@@ -21,7 +21,7 @@ export default function Layout() {
               首頁
             </NavLink>
             <NavLink to="/map" className={(s) => `${linkBase} ${active(s)}`}>
-              地圖
+             咖啡廳
             </NavLink>
             <NavLink to="/care" className={(s) => `${linkBase} ${active(s)}`}>
              知識
@@ -30,14 +30,17 @@ export default function Layout() {
               社群
             </NavLink>
             <NavLink to="/report" className={(s) => `${linkBase} ${active(s)}`}>
-              登記野貓
+              認養
+            </NavLink>
+            <NavLink to="/login" className={(s) => `${linkBase} ${active(s)}`}>
+              登入
             </NavLink>
           </nav>
         </div>
       </header>
 
       {/* 主內容區 */}
-      <main className="flex-grow max-w-6xl mx-auto px-6 py-10">
+      <main className="flex-grow max-w-7xl mx-auto px-2 py-10">
         <Outlet />
       </main>
       <footer className="bg-white border-t border-gray-200 py-3 text-center text-gray-600">

@@ -1,6 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useMemo, useState } from "react";
+import 'antd/dist/reset.css'; // Antd v5 樣式
 
 // 自訂兩種 icon
 const shelterIcon = new L.DivIcon({
