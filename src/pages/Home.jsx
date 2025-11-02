@@ -91,7 +91,7 @@ export default function Home() {
           </div>
           <div className={styles.catsInformationBox}>
              <div className={styles.catsimg} >
-              <img src={cat05} alt="Cat05" className="w-full h-full object-cover rounded-xl" />
+              <img src={cat04} alt="Cat04" className="w-full h-full object-cover rounded-xl" />
             </div>
             <div className={styles.catstext}>
               <p>貓咪名稱 4</p>
