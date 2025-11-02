@@ -6,11 +6,14 @@ import Care from "./pages/Care.jsx";
 import FeedPage from "./pages/FeedPage";
 import PostDetail from "./pages/PostDetail";
 import Report from "./pages/Report.jsx";
-import Layout from "./pages/Layout.jsx"; // 我們下面會建這個共用框架
+import Layout from "./pages/Layout.jsx"; 
+import AnimalDetail from "./pages/AnimalDetail.jsx";
+import AdoptList from "./pages/AdoptList";
+import AdoptConfirm from "./pages/AdoptConfirm.jsx"
 
 export const router = createBrowserRouter([
   {
-    element: <Layout />, // 有導覽列的共用外框
+    element: <Layout />, 
     children: [
       { path: "/", element: <Home /> },
       { path: "/map", element: <Map /> },
@@ -18,6 +21,9 @@ export const router = createBrowserRouter([
       { path: "/feed", element: <FeedPage /> },
       { path: "post/:id", element: <PostDetail /> },
       { path: "/report", element: <Report /> },
+      { path: "/report/:id", element: <AnimalDetail /> }, //ting新增這行 
+      { path: "/adoptlist", element:<AdoptList />},  // 新增領養頁 ting新增這行    
+      { path: "/AdoptConfirm/:id", element:<AdoptConfirm />},   //ting新增這行 
     ],
   },
 ]);
