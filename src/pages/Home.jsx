@@ -21,18 +21,18 @@ export default function Home() {
       <div className={styles.CarouselboxContainer}>
         <Carousel arrows infinite={false}>
           <div className={styles.Carouselbox}>
-            <img src={catCarouse01.jpg} alt="可愛橘貓" className="w-full h-full object-cover rounded-xl"/>
+            <img src={catCarouse01} alt="可愛橘貓" className="w-full h-full object-cover rounded-xl"/>
           </div>
           <div className={styles.Carouselbox}>
-            <img src={catCarouse02.jpg} alt="緬因幼貓" className="w-full h-full object-cover rounded-xl"/>
+            <img src={catCarouse02} alt="緬因幼貓" className="w-full h-full object-cover rounded-xl"/>
 
           </div>
           <div className={styles.Carouselbox}>
-            <img src={catCarouse03.jpg} alt="黑貓睡覺" className="w-full h-full object-cover rounded-xl"/>
+            <img src={catCarouse03} alt="黑貓睡覺" className="w-full h-full object-cover rounded-xl"/>
 
           </div>
           <div className={styles.Carouselbox}>
-            <img src={cat01.png} alt="可愛橘貓" className="w-full h-full object-cover rounded-xl"/>
+            <img src={cat01} alt="可愛橘貓" className="w-full h-full object-cover rounded-xl"/>
           </div>
        </Carousel>
       </div>
@@ -40,7 +40,7 @@ export default function Home() {
         <div className={styles.ServicesArea}>
           <Link to="/Map" className={styles.cardLinkReset }>
             <div className={styles.ServiceIcon}>
-            <img src={coffeeIcon.png} alt="Service1" className="w-full h-full object-cover rounded-xl" />
+            <img src={coffeeIcon} alt="Service1" className="w-full h-full object-cover rounded-xl" />
             </div>
             <p className={styles.Servicetext}>中途咖啡廳推薦</p>
           </Link>
@@ -49,7 +49,7 @@ export default function Home() {
         <div className={styles.ServicesArea}>
           <Link to="/Care" className={styles.cardLinkReset}>
             <div className={styles.ServiceIcon}>
-              <img src={bookIcon.png} alt="Service2" className="w-full h-full object-cover rounded-xl" />
+              <img src={bookIcon} alt="Service2" className="w-full h-full object-cover rounded-xl" />
             </div>
             <p className={styles.Servicetext}>貓貓知識分享</p>
           </Link>          
@@ -57,7 +57,7 @@ export default function Home() {
         <div className={styles.ServicesArea}>
           <Link to="/Report" className={styles.cardLinkReset}>
             <div className={styles.ServiceIcon}>
-              <img src={catIcon.png} alt="Service3" className="w-full h-full object-cover rounded-xl" />
+              <img src={catIcon} alt="Service3" className="w-full h-full object-cover rounded-xl" />
             </div>
             <p className={styles.Servicetext}>收留/認養貓貓服務</p>
           </Link>
@@ -71,7 +71,7 @@ export default function Home() {
         <div className={styles.AdoptionArea}>
           <div className={styles.catsInformationBox}>
             <div className={styles.catsimg} >
-              <img src={cat01.png} alt="Cat01" className="w-full h-full object-cover rounded-xl" />
+              <img src={cat01} alt="Cat01" className="w-full h-full object-cover rounded-xl" />
             </div>
             <div className={styles.catstext}>
               <p>貓咪名稱 1</p>
@@ -81,7 +81,7 @@ export default function Home() {
           </div>
           <div className={styles.catsInformationBox}>
              <div className={styles.catsimg} >
-              <img src={cat03.jpg} alt="Cat03" className="w-full h-full object-cover rounded-xl" />
+              <img src={cat03} alt="Cat03" className="w-full h-full object-cover rounded-xl" />
             </div>
             <div className={styles.catstext}>
               <p>貓咪名稱 3</p>
@@ -91,7 +91,7 @@ export default function Home() {
           </div>
           <div className={styles.catsInformationBox}>
              <div className={styles.catsimg} >
-              <img src={cat05.jpg} alt="Cat05" className="w-full h-full object-cover rounded-xl" />
+              <img src={cat05} alt="Cat05" className="w-full h-full object-cover rounded-xl" />
             </div>
             <div className={styles.catstext}>
               <p>貓咪名稱 4</p>
@@ -101,7 +101,7 @@ export default function Home() {
           </div>
            <div className={styles.catsInformationBox}>
              <div className={styles.catsimg} >
-              <img src={cat05.jpg} alt="Cat05" className="w-full h-full object-cover rounded-xl" />
+              <img src={cat05} alt="Cat05" className="w-full h-full object-cover rounded-xl" />
             </div>
             <div className={styles.catstext}>
               <p>貓咪名稱 4</p>
@@ -123,7 +123,7 @@ export default function Home() {
           <Link to="https://www.facebook.com/profile.php?id=100093700315941" target="_blank" className={styles.cardLinkReset }>
            <div className={styles.CafesInformationBox}>
             <div className={styles.cafesimg} >
-              <img src={catcafe01.jpg} alt="Cafe01" />
+              <img src={catcafe01} alt="Cafe01" />
             </div>
             <div className={styles.cafestext}>
               <h2>転運棧-貓咪中途咖啡廳</h2>
@@ -135,7 +135,7 @@ export default function Home() {
           <Link to="" target="_blank" className={styles.cardLinkReset}>
            <div className={styles.CafesInformationBox}>
             <div className={styles.cafesimg} >
-              <img src={catcafe02.jpg} alt="Cafe02" />
+              <img src={catcafe02} alt="Cafe02" />
             </div>
             <div className={styles.cafestext}>
               <h2>FUFUCatCafe</h2>
@@ -157,7 +157,7 @@ export default function Home() {
         <div className={styles.ArticleArea}>
           <div className={styles.ArticleBox}>
             <div className={styles.Articleimg} >
-              <img src={catcafe01.jpg} alt="Cafe01" />
+              <img src={catcafe01} alt="Cafe01" />
             </div>
             <div className={styles.Articletext}>
               <h2>転運棧-貓咪中途咖啡廳</h2>
@@ -166,7 +166,7 @@ export default function Home() {
           </div>
           <div className={styles.ArticleBox}>
             <div className={styles.Articleimg} >
-              <img src={catcafe01.jpg} alt="Cafe01" />
+              <img src={catcafe01} alt="Cafe01" />
             </div>
             <div className={styles.Articletext}>
               <h2>転運棧-貓咪中途咖啡廳</h2>
@@ -175,7 +175,7 @@ export default function Home() {
           </div>
           <div className={styles.ArticleBox}>
              <div className={styles.Articleimg} >
-              <img src={catcafe01.jpg} alt="Cafe01" />
+              <img src={catcafe01} alt="Cafe01" />
             </div>
             <div className={styles.Articletext}>
               <h2>転運棧-貓咪中途咖啡廳</h2>
