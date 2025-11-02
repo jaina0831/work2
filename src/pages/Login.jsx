@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import petsIcon from "../assets/petsIcon.png";
 // --- [重要] 請將您下載圖片的公開網址替換到這裡 ---
 // 這裡使用的是一個簡單的棕色「爪印」佔位圖作為範例。
 const PET_ICON_URL = "https://placehold.co/40x40/B88C6E/FFF?text=%E7%88%AA%E5%8D%B0"; 
@@ -103,7 +103,7 @@ const Login = () => {
           {/* Logo 區 - 已替換為 IMG 標籤 */}
           <div className="flex justify-center items-center mb-4">
             <img 
-              src="./public/images/petsIcon.png"
+              src={petsIcon} 
               alt="寵物之家標誌" 
               className="w-8 h-8 object-contain" // object-contain 確保圖片完整顯示
             />
