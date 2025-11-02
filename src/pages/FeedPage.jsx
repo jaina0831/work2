@@ -20,7 +20,7 @@ export default function FeedPage() {
               </div>
               <h2 className="text-xl font-bold">{p.title}</h2>
               <div className="text-right mt-2">
-                <Link to={`/post/${p.id}`} className="link link-primary">See more →</Link>
+                <Link to={`/post/${p.id}`} className="link link-primary">查看詳細內容 →</Link>
               </div>
             </div>
           ))}

@@ -23,7 +23,7 @@ const Login = () => {
   const [currentTab, setCurrentTab] = useState('signIn'); // 分頁狀態
 
   // 定義溫暖的主題顏色
-  const ACCENT_COLOR = '#c76c21'; // 焦糖棕色
+  const ACCENT_COLOR = '#D6B788'; // 焦糖棕色
   const LIGHT_ACCENT_COLOR = '#D4A48A'; // 淺棕色
   const CARD_BG = '#FFF7E6'; // 奶油黃#FFF7E6
   const APP_BG = '#FDF8F0'; // 溫暖米白#FDF8F0
