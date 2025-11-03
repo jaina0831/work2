@@ -2,6 +2,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { usePost, useLikePost, useCreateComment, useDeletePost } from "../lib/queries";
 import { useState } from "react";
 import { fmt } from "../lib/date";
+import bin from "../assets/bin.png";
+import bin2 from "../assets/bin2.png";
+import heart from "../assets/heart.png";
+import heart2 from "../assets/heart2.png";
+import comment from "../assets/comment.png";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -10,7 +15,7 @@ export default function PostDetail() {
   const like = useLikePost();
   const createComment = useCreateComment();
   const del = useDeletePost();
-
+  const [hoverDelete, setHoverDelete] = useState(false);
   const [text, setText] = useState("");
   const [showImg, setShowImg] = useState(true);
 
@@ -48,52 +53,76 @@ export default function PostDetail() {
 
         {/* 左側：文章 */}
         <div className="lg:col-span-2">
-          <div className="relative bg-white rounded-2xl shadow-md p-6">
-            {/* 🗑️ 刪除按鈕 */}
-            <button
-              onClick={onDelete}
-              className="absolute right-8 bottom-4 text-2xl hover:scale-110 transition-transform"
-              title="刪除文章"
-              aria-label="刪除文章"
-            >
-              🗑️
-            </button>
+  <div className="relative bg-white rounded-2xl shadow-md p-6">
 
-            <h1 className="text-3xl font-bold mb-2">{post.title}</h1>
-            <div className="text-sm text-gray-500 mb-4">
-              {post.author}・{fmt(post.created_at)}
-            </div>
+    {/* 🗑️ 刪除按鈕 (圖片+hover+active) */}
+    <button
+      onMouseEnter={() => setHoverDelete(true)}
+      onMouseLeave={() => setHoverDelete(false)}
+      onClick={onDelete}
+      className="absolute right-8 bottom-4 transition-transform hover:scale-110 active:scale-95"
+      title="刪除文章"
+      aria-label="刪除文章"
+    >
+      <img
+        src={hoverDelete ? bin2 : bin}
+        alt="刪除文章"
+        className="w-6 h-6"
+      />
+    </button>
 
-            <p className="mb-4 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+    <h1 className="text-3xl font-bold mb-2">{post.title}</h1>
+    <div className="text-sm text-gray-500 mb-4">
+      {post.author}・{fmt(post.created_at)}
+    </div>
 
-            {/* 照片：讀取失敗就顯示替代區塊 */}
-            {imgSrc && showImg ? (
-              <img
-                src={imgSrc}
-                alt="post"
-                className="rounded-xl mb-4"
-                onError={() => setShowImg(false)}
-              />
-            ) : (
-              post.image_url && (
-                <div className="mb-4 rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
-                  圖片載入失敗
-                </div>
-              )
-            )}
+    <p className="mb-4 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
-            {/* 👍 + 💬 計數 */}
-            <div className="flex items-center gap-4">
-              <button className="btn btn-outline" onClick={() => like.mutate(post.id)}>
-              👍 {post.likes_count ?? 0}
-              </button>
-              <div className="inline-flex items-center gap-2 text-gray-700">
-                <span>💬</span>
-                <span>{commentCount}</span>
-              </div>
-            </div>
-          </div>
+    {/* 照片：讀取失敗就顯示替代區塊 */}
+    {imgSrc && showImg ? (
+      <img
+        src={imgSrc}
+        alt="post"
+        className="rounded-xl mb-4"
+        onError={() => setShowImg(false)}
+      />
+    ) : (
+      post.image_url && (
+        <div className="mb-4 rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
+          圖片載入失敗
         </div>
+      )
+    )}
+
+    {/* ❤️ + 💬 計數 */}
+    <div className="flex items-center gap-6">
+
+      {/* ❤️ 按讚圖片版（點擊會 like / unlike） */}
+      <button
+        onClick={() => like.mutate(post.id)}
+        className="flex items-center gap-2 transition-transform hover:scale-110 active:scale-95"
+      >
+        <img
+          src={post.is_liked ? heart2 : heart}
+          alt="like"
+          className="w-6 h-6"
+        />
+        <span className="text-gray-700">{post.likes_count ?? 0}</span>
+      </button>
+
+      {/* 💬 留言 icon */}
+      <div className="flex items-center gap-2">
+        <img
+          src={comment}
+          alt="comment"
+          className="w-6 h-6 opacity-80"
+        />
+        <span className="text-gray-700">{commentCount}</span>
+      </div>
+
+    </div>
+  </div>
+</div>
 
         {/* 右側：留言 */}
         <div className="space-y-3">
