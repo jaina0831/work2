@@ -1,5 +1,7 @@
 import { useLikePost, useCreateComment, /* 新增： */ useDeletePost } from "../lib/queries";
 import { useState } from "react";
+import bin from "../assets/bin.png";
+import bin2 from "../assets/bin2.png";
 
 export default function PostCard({ post }) {
   const like = useLikePost();
@@ -23,13 +25,15 @@ export default function PostCard({ post }) {
     <div className="relative rounded-xl border-black-300 bg-[#fff9f0] shadow 2xl-10 text-black">
       {/* 右上角垃圾桶 */}
       <button
-        onClick={onDelete}
-        className="absolute right-3 top-3 text-xl hover:scale-110 transition-transform"
-        title="刪除文章"
-        aria-label="刪除文章"
-      >
-        🗑️
-      </button>
+  onClick={onDelete}
+  onMouseEnter={() => setHover(true)}
+  onMouseLeave={() => setHover(false)}
+  className="absolute right-3 top-3 hover:scale-110 transition-transform"
+  title="刪除文章"
+  aria-label="刪除文章"
+>
+  <img src={hover ? bin2 : bin} alt="刪除文章" className="w-6 h-6" />
+</button>
 
      <figure className="px-4 pt-6">
   {post.image_url && (
