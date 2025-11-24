@@ -14,7 +14,7 @@ from typing import Optional, List
 from uuid import uuid4
 import os
 import logging
-
+from fastapi.responses import JSONResponse
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import firebase_admin
@@ -186,6 +186,17 @@ def _row_to_post_with_comments(row) -> PostOut:
 # ---------------------------------------------------------
 # Routes
 # ---------------------------------------------------------
+@app.get("/", include_in_schema=False)
+def root():
+    # 你可以回你想要的內容
+    return JSONResponse(
+        {
+            "message": "Work2 後端 API 正常運作中",
+            "docs": "/docs",
+            "example_endpoints": ["/posts", "/comments"],
+        }
+    )
+    
 @app.get("/health")
 def health():
     return {"ok": True}
