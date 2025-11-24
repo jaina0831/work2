@@ -1,11 +1,25 @@
-import { NavLink, Outlet } from "react-router-dom";
+// src/pages/Layout.jsx
+import { NavLink, Link, Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const linkBase =
   "text-gray-800 no-underline px-5 py-2 rounded-md transition-colors duration-200 hover:bg-[#e7b76f] hover:text-white";
 const active = ({ isActive }) =>
   isActive ? "font-semibold bg-[#D6B788] text-white border-b-2 border-[#836054]" : "";
 
+const defaultAvatar =
+  "https://placehold.co/32x32/EEE/AAA?text=U";
+
 export default function Layout() {
+  const { user } = useAuth();
+
+  // 顯示名字的優先順序：displayName > email 前半段 > 預設「訪客」
+  const displayName =
+    user?.displayName ||
+    (user?.email ? user.email.split("@")[0] : "訪客");
+
+  const avatarSrc = user?.photoURL || defaultAvatar;
+
   return (
     <div className="min-h-screen bg-[#FFFCF2]">
       {/* Header */}
@@ -21,10 +35,10 @@ export default function Layout() {
               首頁
             </NavLink>
             <NavLink to="/map" className={(s) => `${linkBase} ${active(s)}`}>
-             地圖
+              地圖
             </NavLink>
             <NavLink to="/care" className={(s) => `${linkBase} ${active(s)}`}>
-             知識
+              知識
             </NavLink>
             <NavLink to="/feed" className={(s) => `${linkBase} ${active(s)}`}>
               社群
@@ -32,9 +46,27 @@ export default function Layout() {
             <NavLink to="/report" className={(s) => `${linkBase} ${active(s)}`}>
               認養
             </NavLink>
-            <NavLink to="/login" className={(s) => `${linkBase} ${active(s)}`}>
-              登入
-            </NavLink>
+
+            {/* 右上角：如果有登入 → 頭像＋姓名；沒登入 → 登入按鈕 */}
+            {user ? (
+              <Link
+                to="/auth"
+                className="flex items-center gap-2 px-3 py-1 rounded-full hover:bg-[#fff2db] transition-colors duration-200 border border-[#f0d9ac]"
+              >
+                <img
+                  src={avatarSrc}
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full object-cover border border-[#D6B788]"
+                />
+                <span className="text-sm font-medium text-gray-800">
+                  {displayName}
+                </span>
+              </Link>
+            ) : (
+              <NavLink to="/login" className={(s) => `${linkBase} ${active(s)}`}>
+                登入
+              </NavLink>
+            )}
           </nav>
         </div>
       </header>
@@ -43,7 +75,8 @@ export default function Layout() {
       <main className="flex-grow max-w-7xl mx-auto px-2 py-10">
         <Outlet />
       </main>
-      <footer className="bg-[#D6B788] border-t  py-3 text-center text-white-600 text-white !text-white">
+
+      <footer className="bg-[#D6B788] border-t py-3 text-center text-white">
         © 2025 浪浪領地 | Hogwarts Coder · Slytherin
       </footer>
     </div>

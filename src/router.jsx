@@ -12,6 +12,7 @@ import AdoptList from "./pages/AdoptList";
 import AdoptConfirm from "./pages/AdoptConfirm.jsx";
 import Login from "./pages/Login.jsx";
 import Signin from "./pages/Signin.jsx";
+import AuthPage from "./pages/Auth.jsx"; 
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: "/AdoptConfirm/:id", element:<AdoptConfirm />},   //ting新增這行 
       { path: "/login", element: <Login /> },
       { path: "/signin", element: <Signin /> },
+      { path: "/auth", element: <AuthPage /> },
     ],
   },
 ]);

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import petsIcon from "../assets/petsIcon.png";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
+import { useNavigate } from "react-router-dom";
 
 const ACCENT_COLOR = "#D6B788";
 const LIGHT_ACCENT_COLOR = "#D4A48A";
@@ -10,6 +11,7 @@ const CARD_BG = "#FFF7E6";
 const APP_BG = "#FDF8F0";
 
 const Login = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState(""); // 當作帳號
   const [password, setPassword] = useState("");
   const [staySignedIn, setStaySignedIn] = useState(false);
@@ -41,7 +43,9 @@ const Login = () => {
 
       setMessage({ type: "success", text: "登入成功！歡迎回來～" });
 
-      // 如果之後要導頁，可以用 useNavigate() 在這裡 navigate("/feed")
+      // ✅ 登入成功後導到帳號中心頁面
+      navigate("/auth");
+
     } catch (error) {
       console.error("Firebase Login Error:", error);
       let text = "登入失敗，請確認帳號密碼。";

@@ -6,13 +6,16 @@ import { router } from "./router.jsx";
 import "./index.css";
 import "leaflet/dist/leaflet.css";
 import "./lib/fixLeafletIcon.js";
+import { AuthProvider } from "./context/AuthContext.jsx"; 
 
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>                                   {/* ⭐ 新增 */}
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );
