@@ -1,5 +1,5 @@
 // src/pages/Auth.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { auth, storage } from "../firebase";
@@ -8,11 +8,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
 } from "firebase/auth";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const CARD_BG = "#FFF7E6";
 const APP_BG = "#FDF8F0";
@@ -23,6 +19,16 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");   // ⭐ 新增：本地頭像狀態
+
+  useEffect(() => {
+    if (user) {
+      setAvatarUrl(
+        user.photoURL ||
+          "https://placehold.co/120x120/EEE/AAA?text=Avatar"
+      );
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -32,17 +38,14 @@ const AuthPage = () => {
     );
   }
 
-  // 沒登入就導回登入頁
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
   const displayName = user.displayName || "未設定暱稱";
   const email = user.email;
-  const photoURL =
-    user.photoURL ||
-    "https://placehold.co/120x120/EEE/AAA?text=Avatar";
 
+  // ✅ 上傳頭像並立即更新畫面
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -51,15 +54,17 @@ const AuthPage = () => {
       setUploading(true);
       setMsg("");
 
-      // 上傳到 Firebase Storage
       const avatarRef = ref(storage, `avatars/${user.uid}`);
       await uploadBytes(avatarRef, file);
       const url = await getDownloadURL(avatarRef);
 
-      // 更新 Firebase Auth 的 photoURL
+      // 更新 Firebase Auth
       await updateProfile(user, { photoURL: url });
 
-      setMsg("頭像更新成功！重新整理後即可看到最新頭像。");
+      // 立刻更新畫面上的頭像
+      setAvatarUrl(url);
+
+      setMsg("頭像更新成功！");
     } catch (error) {
       console.error("更新頭像失敗:", error);
       setMsg("更新頭像失敗，請稍後再試。");
@@ -75,7 +80,7 @@ const AuthPage = () => {
       setMsg(`已寄出重設密碼信到：${email}`);
     } catch (error) {
       console.error("重設密碼信寄送失敗:", error);
-      setMsg("寄送重設密碼信失敗，請稍後再試。");
+      setMsg(`寄送重設密碼信失敗：${error.code || error.message}`);
     }
   };
 
@@ -110,11 +115,11 @@ const AuthPage = () => {
           </div>
         )}
 
-        {/* 頭像 + 基本資訊 */}
+        {/* 頭像 + 資訊 */}
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <img
-              src={photoURL}
+              src={avatarUrl}
               alt="avatar"
               className="w-24 h-24 rounded-full object-cover border border-amber-200"
             />
@@ -144,7 +149,6 @@ const AuthPage = () => {
           </div>
         </div>
 
-        {/* 帳號設定 */}
         <div className="space-y-4 mt-4">
           <button
             type="button"
