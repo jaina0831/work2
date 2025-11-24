@@ -4,3 +4,4 @@ pydantic
 python-multipart==0.0.12
 supabase==2.6.0
 python-dotenv
+firebase-admin

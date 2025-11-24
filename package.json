@@ -18,6 +18,7 @@
     "antd": "^5.28.0",
     "axios": "^1.12.2",
     "daisyui": "^5.1.29",
+    "firebase": "^12.6.0",
     "framer-motion": "^12.23.24",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.552.0",

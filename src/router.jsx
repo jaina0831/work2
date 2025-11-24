@@ -11,6 +11,7 @@ import AnimalDetail from "./pages/AnimalDetail.jsx";
 import AdoptList from "./pages/AdoptList";
 import AdoptConfirm from "./pages/AdoptConfirm.jsx";
 import Login from "./pages/Login.jsx";
+import Signin from "./pages/Signin.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "/adoptlist", element:<AdoptList />},  // 新增領養頁 ting新增這行    
       { path: "/AdoptConfirm/:id", element:<AdoptConfirm />},   //ting新增這行 
       { path: "/login", element: <Login /> },
+      { path: "/signin", element: <Signin /> },
     ],
   },
 ]);
