@@ -14,5 +14,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+// ✅ 這裡直接指定 gs://bucket-id
+export const storage = getStorage(app, "gs://work-b09a2.appspot.com");
 export const auth = getAuth(app);
-export const storage = getStorage(app);
