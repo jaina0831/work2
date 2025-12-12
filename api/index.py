@@ -10,7 +10,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Literal   # 👈 多加 Literal
 from uuid import uuid4
 import os
 import logging
@@ -19,6 +19,8 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
+from openai import OpenAI                     # 👈 多加這行
+
 
 # ---- logging ----
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +28,11 @@ logger = logging.getLogger("app")
 
 # 讀取 .env（本機開發用，部署時由平台提供環境變數）
 load_dotenv()
-
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_KEY:
+    # 不想讓整個服務爆掉也可以改成 logger.warning
+    raise RuntimeError("Missing OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_KEY)
 app = FastAPI()
 
 app.add_middleware(
@@ -154,6 +160,21 @@ class CommentIn(BaseModel):
     author: str
     text: str
 
+# ---- Chat schemas ----
+Role = Literal["system", "user", "assistant"]  # 給 Pydantic 用的型別限制
+
+
+class ChatMessage(BaseModel):
+    role: Role
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+class ChatResponse(BaseModel):
+    reply: str
 
 # ---------------------------------------------------------
 # Helpers（保留原本）
@@ -196,7 +217,7 @@ def root():
             "example_endpoints": ["/posts", "/comments"],
         }
     )
-    
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -206,6 +227,31 @@ def health():
 def health_supabase():
     return {"sb": bool(sb)}
 
+@app.post("/chat", response_model=ChatResponse)
+async def chat_with_ai(
+    payload: ChatRequest,
+    user = Depends(get_current_user),   # 🔐 必須登入（Firebase token）
+):
+    """
+    使用雲端 LLM 回覆訊息。
+    前端會把整段 messages 丟過來，所以這裡直接轉給 OpenAI。
+    """
+    if client is None:
+        raise HTTPException(500, "LLM client not configured")
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4.1-mini",  # 或老師指定的 model
+            messages=[
+                {"role": m.role, "content": m.content}
+                for m in payload.messages
+            ],
+        )
+        reply = completion.choices[0].message.content
+        return {"reply": reply}
+    except Exception as e:
+        logger.exception("POST /chat failed")
+        raise HTTPException(500, "LLM_error")
 
 @app.get("/posts", response_model=List[PostOut])
 def list_posts():
