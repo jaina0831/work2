@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { api } from "../lib/apiClient";        // 你原本的 axios instance
-import { useNavigate } from "react-router-dom";
 import catAvatar from "../assets/cat.png"; // 先共用這張
 import chatbotIcon from "../assets/chatbot.png"; // 圓圈 icon，自行換檔名
 
@@ -15,7 +14,7 @@ export default function ChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const navigate = useNavigate();
+
 
   const handleToggle = () => setOpen((o) => !o);
 
