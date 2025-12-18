@@ -28,6 +28,7 @@ logger = logging.getLogger("app")
 
 # 讀取 .env（本機開發用，部署時由平台提供環境變數）
 load_dotenv()
+print("OPENAI KEY LOADED?", os.getenv("OPENAI_API_KEY"))  
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_KEY:
     # 不想讓整個服務爆掉也可以改成 logger.warning
@@ -227,21 +228,11 @@ def health():
 def health_supabase():
     return {"sb": bool(sb)}
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat_with_ai(
-    payload: ChatRequest,
-    user = Depends(get_current_user),   # 🔐 必須登入（Firebase token）
-):
-    """
-    使用雲端 LLM 回覆訊息。
-    前端會把整段 messages 丟過來，所以這裡直接轉給 OpenAI。
-    """
-    if client is None:
-        raise HTTPException(500, "LLM client not configured")
-
+@app.post("/chat")
+async def chat_with_ai(payload: ChatRequest):
     try:
         completion = client.chat.completions.create(
-            model="gpt-4.1-mini",  # 或老師指定的 model
+            model="gpt-4o-mini",
             messages=[
                 {"role": m.role, "content": m.content}
                 for m in payload.messages
@@ -249,9 +240,11 @@ async def chat_with_ai(
         )
         reply = completion.choices[0].message.content
         return {"reply": reply}
+
     except Exception as e:
-        logger.exception("POST /chat failed")
-        raise HTTPException(500, "LLM_error")
+        print("ERROR:", e)
+        raise HTTPException(500, f"AI error: {e}")
+
 
 @app.get("/posts", response_model=List[PostOut])
 def list_posts():
