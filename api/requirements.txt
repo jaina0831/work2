@@ -1,8 +1,8 @@
-fastapi==0.118.1          # 你本機已經是 0.118.1，其實可以對齊
-uvicorn[standard]==0.30.6
-pydantic==2.12.0          # 跟你本機 log 一樣
+fastapi==0.115.2
+uvicorn[standard]
+pydantic
 python-multipart==0.0.12
 supabase==2.6.0
-python-dotenv==1.0.1      # 或保留不指定版本也行
+python-dotenv
 firebase-admin
-httpx==0.28.1             # ⭐ 新增：DeepSeek 用它來發 HTTP 請求
+httpx
