@@ -19,21 +19,21 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
-from openai import OpenAI                     # 👈 多加這行
+import httpx   # ⭐ 新增：用 httpx 呼叫 DeepSeek API
 
 
 # ---- logging ----
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
 
-# 讀取 .env（本機開發用，部署時由平台提供環境變數）
+# 讀取 .env（本機開發用；部署時由 Render 提供環境變數）
 load_dotenv()
-print("OPENAI KEY LOADED?", os.getenv("OPENAI_API_KEY"))  
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-if not OPENAI_KEY:
-    # 不想讓整個服務爆掉也可以改成 logger.warning
-    raise RuntimeError("Missing OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_KEY)
+
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+if not DEEPSEEK_API_KEY:
+    # 不讓整個服務直接死掉，只先記 log，呼叫 /chat 時再回 500
+    logging.warning("Missing DEEPSEEK_API_KEY, /chat will not work")
+
 app = FastAPI()
 
 app.add_middleware(
@@ -228,22 +228,53 @@ def health():
 def health_supabase():
     return {"sb": bool(sb)}
 
-@app.post("/chat")
-async def chat_with_ai(payload: ChatRequest):
+@app.post("/chat", response_model=ChatResponse)
+async def chat_with_ai(
+    payload: ChatRequest,
+    user = Depends(get_current_user),   # 🔐 保持 secured API
+):
+    """
+    使用 DeepSeek 雲端 LLM 回覆訊息。
+    前端會把整段 messages 丟過來，所以這裡直接轉給 DeepSeek。
+    """
+
+    if not DEEPSEEK_API_KEY:
+        raise HTTPException(500, "LLM not configured")
+
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": m.role, "content": m.content}
-                for m in payload.messages
-            ],
-        )
-        reply = completion.choices[0].message.content
+        async with httpx.AsyncClient(base_url="https://api.deepseek.com") as client:
+            resp = await client.post(
+                "/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "deepseek-chat",   # DeepSeek 免費主力模型
+                    "messages": [
+                        {"role": m.role, "content": m.content}
+                        for m in payload.messages
+                    ],
+                    "temperature": 0.7,
+                },
+                timeout=30.0,
+            )
+
+        if resp.status_code != 200:
+            # 把 DeepSeek 回傳的錯誤也印進 log
+            logger.error("DeepSeek error %s: %s", resp.status_code, resp.text)
+            raise HTTPException(500, "LLM_error")
+
+        data = resp.json()
+        reply = data["choices"][0]["message"]["content"]
         return {"reply": reply}
 
+    except HTTPException:
+        # 直接往外丟（上面 raise 的）
+        raise
     except Exception as e:
-        print("ERROR:", e)
-        raise HTTPException(500, f"AI error: {e}")
+        logger.exception("POST /chat failed")
+        raise HTTPException(500, "LLM_error")
 
 
 @app.get("/posts", response_model=List[PostOut])
