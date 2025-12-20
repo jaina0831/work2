@@ -120,7 +120,7 @@ useEffect(() => {
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="text-sm text-[#9C8A75] hover:text-[#774422]"
+              className="text-sm text-[#9C8A75] hover:text-[#D6B788]"
             >
               ✕
             </button>
@@ -191,8 +191,8 @@ useEffect(() => {
                   px-3 py-1 text-sm rounded-lg font-semibold
                   ${
                     loading || !input.trim()
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-[#BB5500] text-white hover:bg-[#D67318] active:bg-[#994400]"
+                      ? "bg-gray-300 text-white cursor-not-allowed"
+                      : "bg-[E4D3B5] text-white hover:bg-[#D6B788] active:bg-[#9C8A75]"
                   }
                 `}
               >
