@@ -253,26 +253,26 @@ SYSTEM_PROMPT = """
 若涉及醫療問題，只能提供一般照護建議，提醒就醫，不做診斷。
 回答以條列為主，最後可加一句友善追問。
 """
-# ---- Chat route（secured，使用 Firebase 登入） ----
 
+# ---- Chat route（secured，使用 Firebase 登入） ----
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_ai(payload: ChatRequest, user=Depends(get_current_user)):
     try:
         logger.info("Chat request from uid=%s", user.get("uid"))
+
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
+            {"role": m.role, "content": m.content} for m in payload.messages
+        ]
+
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
-    {"role": m.role, "content": m.content} for m in payload.messages
-]
-
-completion = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=messages,
-)
+            messages=messages,
         )
+
         reply = completion.choices[0].message.content
         return {"reply": reply}
-    except Exception as e:
+
+    except Exception:
         logger.exception("ERROR in /chat")
         raise HTTPException(status_code=500, detail="AI error")
 
