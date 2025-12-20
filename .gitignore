@@ -23,11 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Env files（本機用，部署由 Vercel 環境變數提供）
-.env*
-!.env.production
+# Env files（所有 env 都不進 Git）
+.env
+.env.*
+!.env.example
 
-# ---- 下面三行是關鍵：確保 api 與 requirements.txt 會被提交 ----
+# ---- 保留需要被提交的檔案 ----
 !api/**
 !requirements.txt
 !.vercelignore
