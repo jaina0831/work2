@@ -9,33 +9,51 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
+
 from pydantic import BaseModel
-from typing import Optional, List, Literal   # 👈 多加 Literal
+from typing import Optional, List, Literal
 from uuid import uuid4
 import os
 import logging
-from fastapi.responses import JSONResponse
+
 from supabase import create_client, Client
 from dotenv import load_dotenv
+
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
-import httpx   # ⭐ 新增：用 httpx 呼叫 DeepSeek API
 
+from openai import OpenAI
 
-# ---- logging ----
+# ---------------------------------------------------------
+# logging
+# ---------------------------------------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
 
-# 讀取 .env（本機開發用；部署時由 Render 提供環境變數）
+# ---------------------------------------------------------
+# 讀取環境變數（本機用 .env，部署用 Render env）
+# ---------------------------------------------------------
 load_dotenv()
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
-if not DEEPSEEK_API_KEY:
-    # 不讓整個服務直接死掉，只先記 log，呼叫 /chat 時再回 500
-    logging.warning("Missing DEEPSEEK_API_KEY, /chat will not work")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_KEY:
+    # 這裡直接丟錯，後端啟動時就會知道 key 沒設好
+    raise RuntimeError("Missing OPENAI_API_KEY")
 
+logger.info("OPENAI_API_KEY loaded: %s", "YES" if OPENAI_KEY else "NO")
+
+# 初始化 OpenAI client
+client = OpenAI(api_key=OPENAI_KEY)
+
+# ---------------------------------------------------------
+# 建立 FastAPI app
+# ---------------------------------------------------------
 app = FastAPI()
 
+# ---------------------------------------------------------
+# CORS 設定
+# ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -44,13 +62,13 @@ app.add_middleware(
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],   # 有自訂 X-Client-Id，放通較簡單
+    allow_headers=["*"],    # 有自訂 X-Client-Id、Authorization
     expose_headers=["*"],
     max_age=86400,
 )
 
 # ---------------------------------------------------------
-# Supabase init（保留原本邏輯，不動資料設計）
+# Supabase init
 # ---------------------------------------------------------
 sb: Optional[Client] = None
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -67,7 +85,7 @@ except Exception:
     sb = None
 
 # ---------------------------------------------------------
-# Firebase Admin init（正式專案：用環境變數，不放 JSON 檔）
+# Firebase Admin init（從環境變數讀 service account）
 # ---------------------------------------------------------
 firebase_app = None
 try:
@@ -82,7 +100,7 @@ try:
     if not (firebase_project_id and firebase_private_key and firebase_client_email):
         logger.error("Missing Firebase service account envs")
     else:
-        # 如果 .env 裡是用 \n 表示換行，這裡還原
+        # .env 若用 '\n' 表示換行，這裡還原
         private_key = firebase_private_key.replace("\\n", "\n")
 
         cred_info = {
@@ -133,9 +151,8 @@ def get_current_user(
         logger.exception("verify_id_token failed")
         raise HTTPException(401, "Invalid or expired token")
 
-
 # ---------------------------------------------------------
-# Schemas（保留原本）
+# Schemas
 # ---------------------------------------------------------
 class CommentOut(BaseModel):
     id: int
@@ -161,8 +178,9 @@ class CommentIn(BaseModel):
     author: str
     text: str
 
+
 # ---- Chat schemas ----
-Role = Literal["system", "user", "assistant"]  # 給 Pydantic 用的型別限制
+Role = Literal["system", "user", "assistant"]  # Pydantic 型別限制用
 
 
 class ChatMessage(BaseModel):
@@ -178,7 +196,7 @@ class ChatResponse(BaseModel):
     reply: str
 
 # ---------------------------------------------------------
-# Helpers（保留原本）
+# Helpers
 # ---------------------------------------------------------
 def _row_to_post_with_comments(row) -> PostOut:
     if sb is None:
@@ -204,20 +222,19 @@ def _row_to_post_with_comments(row) -> PostOut:
         comments=comments,
     )
 
-
 # ---------------------------------------------------------
 # Routes
 # ---------------------------------------------------------
 @app.get("/", include_in_schema=False)
 def root():
-    # 你可以回你想要的內容
     return JSONResponse(
         {
             "message": "Work2 後端 API 正常運作中",
             "docs": "/docs",
-            "example_endpoints": ["/posts", "/comments"],
+            "example_endpoints": ["/posts", "/comments", "/chat"],
         }
     )
+
 
 @app.get("/health")
 def health():
@@ -228,53 +245,24 @@ def health():
 def health_supabase():
     return {"sb": bool(sb)}
 
+
+# ---- Chat route（secured，使用 Firebase 登入） ----
 @app.post("/chat", response_model=ChatResponse)
-async def chat_with_ai(
-    payload: ChatRequest,
-    user = Depends(get_current_user),   # 🔐 保持 secured API
-):
-    """
-    使用 DeepSeek 雲端 LLM 回覆訊息。
-    前端會把整段 messages 丟過來，所以這裡直接轉給 DeepSeek。
-    """
-
-    if not DEEPSEEK_API_KEY:
-        raise HTTPException(500, "LLM not configured")
-
+async def chat_with_ai(payload: ChatRequest, user=Depends(get_current_user)):
     try:
-        async with httpx.AsyncClient(base_url="https://api.deepseek.com") as client:
-            resp = await client.post(
-                "/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek-chat",   # DeepSeek 免費主力模型
-                    "messages": [
-                        {"role": m.role, "content": m.content}
-                        for m in payload.messages
-                    ],
-                    "temperature": 0.7,
-                },
-                timeout=30.0,
-            )
-
-        if resp.status_code != 200:
-            # 把 DeepSeek 回傳的錯誤也印進 log
-            logger.error("DeepSeek error %s: %s", resp.status_code, resp.text)
-            raise HTTPException(500, "LLM_error")
-
-        data = resp.json()
-        reply = data["choices"][0]["message"]["content"]
+        logger.info("Chat request from uid=%s", user.get("uid"))
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": m.role, "content": m.content}
+                for m in payload.messages
+            ],
+        )
+        reply = completion.choices[0].message.content
         return {"reply": reply}
-
-    except HTTPException:
-        # 直接往外丟（上面 raise 的）
-        raise
     except Exception as e:
-        logger.exception("POST /chat failed")
-        raise HTTPException(500, "LLM_error")
+        logger.exception("ERROR in /chat")
+        raise HTTPException(status_code=500, detail="AI error")
 
 
 @app.get("/posts", response_model=List[PostOut])
@@ -361,7 +349,6 @@ async def create_post(
                     "content": content,
                     "image_url": image_url,
                     "likes_count": 0,
-                    # created_at 讓 DB default now() 自己填
                 }
             )
             .execute()
@@ -500,7 +487,6 @@ def delete_post(post_id: int, user=Depends(get_current_user)):  # 🔐
     # --- 刪除圖片 (若有) ---
     image_url = post.get("image_url")
     if image_url:
-        # Supabase 公開鏈結格式：
         # https://<project>.supabase.co/storage/v1/object/public/images/<filename>
         filename = image_url.split("/")[-1].split("?")[0]
         sb.storage.from_("images").remove([filename])
