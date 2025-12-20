@@ -32,3 +32,6 @@ dist-ssr
 !api/**
 !requirements.txt
 !.vercelignore
+
+api/.env
+api/.env.local
