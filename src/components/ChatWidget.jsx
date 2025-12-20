@@ -1,20 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../lib/apiClient";        // 你原本的 axios instance
 import catAvatar from "../assets/cat.png"; // 先共用這張
 import chatbotIcon from "../assets/chatbot.png"; // 圓圈 icon，自行換檔名
 
 export default function ChatWidget() {
+  const CHAT_STORAGE_KEY = "strayland_chat_v1";
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState(() => {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [
     {
       role: "assistant",
       content: "嗨～我是浪浪領地的小管家，有什麼想詢問的嗎？",
     },
-  ]);
+  ];
+});
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+useEffect(() => {
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+  } catch {}
+}, [messages]);
 
   const handleToggle = () => setOpen((o) => !o);
 

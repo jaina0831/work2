@@ -245,18 +245,30 @@ def health():
 def health_supabase():
     return {"sb": bool(sb)}
 
-
+SYSTEM_PROMPT = """
+你是「浪浪領地的小管家」，語氣溫暖可愛但不裝傻，使用繁體中文。
+你會協助使用者了解：浪貓認養流程、送養注意事項、貓咪照護、網站功能導覽。
+你不知道的就誠實說不知道，並用提問釐清。
+不要捏造不存在的貓咪資訊、收容單位、聯絡方式。
+若涉及醫療問題，只能提供一般照護建議，提醒就醫，不做診斷。
+回答以條列為主，最後可加一句友善追問。
+"""
 # ---- Chat route（secured，使用 Firebase 登入） ----
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_ai(payload: ChatRequest, user=Depends(get_current_user)):
     try:
         logger.info("Chat request from uid=%s", user.get("uid"))
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": m.role, "content": m.content}
-                for m in payload.messages
-            ],
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
+    {"role": m.role, "content": m.content} for m in payload.messages
+]
+
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+)
         )
         reply = completion.choices[0].message.content
         return {"reply": reply}
