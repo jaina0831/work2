@@ -191,8 +191,8 @@ useEffect(() => {
                   px-3 py-1 text-sm rounded-lg font-semibold
                   ${
                     loading || !input.trim()
-                      ? "bg-gray-300 text-white cursor-not-allowed"
-                      : "bg-[E4D3B5] text-white hover:bg-[#D6B788] active:bg-[#9C8A75]"
+                      ? "bg-[#E4D3B5] text-white hover:bg-[#D6B788] not-[]:cursor-not-allowed"
+                      : "bg-[#E4D3B5] text-white hover:bg-[#D6B788] active:bg-[#9C8A75]"
                   }
                 `}
               >
