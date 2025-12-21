@@ -1,4 +1,3 @@
-
 // src/pages/Layout.jsx
 import { NavLink, Link, Outlet, useNavigation } from "react-router-dom"; // 1. 引入 useNavigation
 import { useAuth } from "../context/AuthContext.jsx";
@@ -48,7 +47,7 @@ export default function Layout() {
               地圖
             </NavLink>
             <NavLink to="/care" className={(s) => `${linkBase} ${active(s)}`}>
-              知識
+              社群
             </NavLink>
             <NavLink to="/feed" className={(s) => `${linkBase} ${active(s)}`}>
               社群
