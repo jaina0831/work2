@@ -7,7 +7,7 @@ import { signOut, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const CARD_BG = "#FFF7E6";
-const APP_BG = "#FDF8F0";
+//const APP_BG = "#FDF8F0";
 
 const AuthPage = () => {
   const { user, loading } = useAuth();

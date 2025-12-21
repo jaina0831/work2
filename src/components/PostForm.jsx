@@ -1,4 +1,3 @@
-// src/components/PostForm.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";

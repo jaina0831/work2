@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 const ACCENT_COLOR = "#D6B788";
 const LIGHT_ACCENT_COLOR = "#D4A48A";
 const CARD_BG = "#FFF7E6";
-const APP_BG = "#FDF8F0";
+//const APP_BG = "#FDF8F0";
 
 const Login = () => {
   const navigate = useNavigate();

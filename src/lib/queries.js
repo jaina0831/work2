@@ -1,7 +1,7 @@
-// src/lib/queries.js
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./apiClient";
 
+// 取得全部貼文
 export const usePosts = () =>
   useQuery({
     queryKey: ["posts"],
@@ -10,6 +10,7 @@ export const usePosts = () =>
     refetchOnWindowFocus: false,
   });
 
+// 取得單篇
 export const usePost = (id) =>
   useQuery({
     queryKey: ["posts", id],
@@ -17,6 +18,7 @@ export const usePost = (id) =>
     enabled: !!id,
   });
 
+// 新增貼文（含圖片）
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
@@ -24,12 +26,14 @@ export function useCreatePost() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
     onError: (err) => {
       const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
       if (status === 401) alert("請先登入後再發文");
-      else alert("發文失敗");
+      else alert("發佈失敗：" + (detail || "請稍後再試"));
     },
   });
 }
 
+// 按讚/收回
 export const useLikePost = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -46,10 +50,10 @@ export const useLikePost = () => {
   });
 };
 
+// 留言
 export const useCreateComment = () => {
   const qc = useQueryClient();
   return useMutation({
-    // ✅ payload: { post_id, text }
     mutationFn: (payload) => api.post(`/comments`, payload).then((r) => r.data),
     onSuccess: (_res, vars) => {
       qc.invalidateQueries({ queryKey: ["posts"] });
@@ -63,6 +67,7 @@ export const useCreateComment = () => {
   });
 };
 
+// 刪文
 export const useDeletePost = () => {
   const qc = useQueryClient();
   return useMutation({

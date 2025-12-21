@@ -1,7 +1,7 @@
 // src/pages/Signin.jsx
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { auth } from "../firebase";
 import petsIcon from "../assets/petsIcon.png";
 
@@ -10,8 +10,6 @@ const CARD_BG = "#FFF7E6";
 const APP_BG = "#FDF8F0";
 
 const Signin = () => {
-  const navigate = useNavigate();
-
   const [realName, setRealName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -36,26 +34,24 @@ const Signin = () => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-      // ✅ 把「暱稱」寫進 Firebase Auth 的 displayName
+      // ✅ 把暱稱寫進 Firebase Auth (displayName)
       await updateProfile(cred.user, { displayName: nickname });
 
-      setMessage({ type: "success", text: "註冊成功！已設定暱稱～" });
+      // ✅ 強制刷新 token，讓後端立刻拿得到最新 name
+      await cred.user.getIdToken(true);
 
-      // 清空
+      setMessage({ type: "success", text: "註冊成功！" });
+
       setRealName("");
       setNickname("");
       setPhoneNumber("");
       setAddress("");
       setEmail("");
       setPassword("");
-
-      // ✅ 直接帶去帳號中心或登入後的頁面
-      navigate("/auth");
     } catch (error) {
+      console.error(error);
       let text = "註冊失敗，請稍後再試。";
-      if (error.code === "auth/email-already-in-use") {
-        text = "Email 已被註冊。";
-      }
+      if (error.code === "auth/email-already-in-use") text = "Email 已被註冊。";
       setMessage({ type: "error", text });
     } finally {
       setLoading(false);
@@ -81,9 +77,7 @@ const Signin = () => {
           {message.text && (
             <div
               className={`mb-[10px] p-3 rounded-lg text-sm ${
-                message.type === "error"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-green-100 text-green-700"
+                message.type === "error" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
               }`}
             >
               {message.text}
@@ -91,7 +85,7 @@ const Signin = () => {
           )}
 
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="真實姓名" value={realName} onChange={(e) => setRealName(e.target.value)} />
-          <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="暱稱（會顯示在社群留言/發文）" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="暱稱" value={nickname} onChange={(e) => setNickname(e.target.value)} />
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="聯絡電話" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="住址" value={address} onChange={(e) => setAddress(e.target.value)} />
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="信箱" value={email} onChange={(e) => setEmail(e.target.value)} />

@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { usePost, useLikePost, useCreateComment, useDeletePost } from "../lib/queries";
+import { useEffect, useState } from "react";
+import { fmt } from "../lib/date";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
-
-import { usePost, useLikePost, useCreateComment, useDeletePost } from "../lib/queries";
-import { fmt } from "../lib/date";
 
 import bin from "../assets/bin.png";
 import bin2 from "../assets/bin2.png";
@@ -22,7 +21,6 @@ function resolveUrl(path) {
 export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const { data: post, isLoading } = usePost(Number(id));
   const like = useLikePost();
   const createComment = useCreateComment();
@@ -42,65 +40,66 @@ export default function PostDetail() {
   if (!post) return <div className="p-8">找不到文章</div>;
 
   const imgSrc = resolveUrl(post.image_url);
-  const commentCount = (post.comments || []).length;
-
-  const onToggleLike = () => {
-    if (!user) return navigate("/login");
-    like.mutate(post.id);
-  };
 
   const submit = (e) => {
     e.preventDefault();
     if (!user) return navigate("/login");
-
     const t = text.trim();
     if (!t) return;
-
     createComment.mutate({ post_id: post.id, text: t });
     setText("");
   };
 
   const onDelete = () => {
     if (confirm("確定要刪除這篇文章嗎？")) {
-      del.mutate(post.id, { onSuccess: () => navigate("/feed") });
+      del.mutate(post.id, {
+        onSuccess: () => navigate("/feed"),
+      });
     }
   };
+
+  const onToggleLike = () => {
+    if (!user) return navigate("/login");
+    like.mutate(post.id);
+  };
+
+  const commentCount = post.comments?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-[#fff9f0]">
       <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左：文章 */}
+        {/* 左側：文章 */}
         <div className="lg:col-span-2">
           <div className="relative bg-white rounded-2xl shadow-md p-6">
+            {/* 🗑️ 刪除 */}
             <button
               onMouseEnter={() => setHoverDelete(true)}
               onMouseLeave={() => setHoverDelete(false)}
               onClick={onDelete}
               className="absolute right-8 bottom-4 transition-transform hover:scale-110 active:scale-95"
               title="刪除文章"
+              aria-label="刪除文章"
             >
               <img src={hoverDelete ? bin2 : bin} alt="刪除文章" className="w-6 h-6" />
             </button>
 
-            {/* post.author / post.author_avatar */}
-            <div className="flex items-center gap-3 mb-3">
+            <h1 className="text-3xl font-bold mb-2">{post.title}</h1>
+
+            <div className="flex items-center gap-3 mb-4 text-sm text-gray-500">
               {post.author_avatar ? (
                 <img
                   src={post.author_avatar}
                   alt={post.author}
-                  className="w-10 h-10 rounded-full object-cover border border-[#E4D3B5]"
+                  className="w-8 h-8 rounded-full object-cover border border-[#E4D3B5]"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-[#E4D3B5] opacity-60" />
+                <div className="w-8 h-8 rounded-full bg-[#E4D3B5] opacity-60" />
               )}
-
-              <div className="flex flex-col leading-tight">
-                <div className="font-semibold">{post.author}</div>
-                <div className="text-xs text-gray-500">{fmt(post.created_at)}</div>
+              <div>
+                <div>{post.author}</div>
+                <div className="text-xs">{fmt(post.created_at)}</div>
               </div>
             </div>
-
-            <h1 className="text-3xl font-bold mb-2">{post.title}</h1>
 
             <p className="mb-4 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
@@ -108,7 +107,7 @@ export default function PostDetail() {
               <img
                 src={imgSrc}
                 alt="post"
-                className="rounded-xl mb-4 w-full"
+                className="rounded-xl mb-4"
                 onError={() => setShowImg(false)}
               />
             ) : (
@@ -119,15 +118,17 @@ export default function PostDetail() {
               )
             )}
 
+            {/* ❤️ + 💬 */}
             <div className="flex items-center gap-6">
-              {/* ✅ 登入才可按讚/收回讚，likes_count 會跟著後端 +1/-1 */}
               <button
                 onClick={onToggleLike}
                 className="flex items-center gap-2 transition-transform hover:scale-110 active:scale-95"
-                disabled={like.isPending}
-                title={!user ? "登入後才能按讚" : "按讚/收回讚"}
               >
-                <img src={post.is_liked ? heart2 : heart} alt="like" className="w-6 h-6" />
+                <img
+                  src={post.is_liked ? heart2 : heart}
+                  alt="like"
+                  className="w-6 h-6"
+                />
                 <span className="text-gray-700">{post.likes_count ?? 0}</span>
               </button>
 
@@ -139,11 +140,11 @@ export default function PostDetail() {
           </div>
         </div>
 
-        {/* 右：留言 */}
+        {/* 右側：留言 */}
         <div className="space-y-3">
           {!user ? (
             <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-sm text-gray-700 mb-2">留言需要先登入帳號喔～</div>
+              <div className="font-semibold mb-1">留言需要先登入帳號喔～</div>
               <button className="btn btn-primary btn-sm" onClick={() => navigate("/login")}>
                 前往登入
               </button>
@@ -152,7 +153,7 @@ export default function PostDetail() {
             <form onSubmit={submit} className="bg-white rounded-xl shadow p-4">
               <input
                 className="input input-bordered w-full"
-                placeholder="留言…"
+                placeholder="寫下留言..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 required
@@ -163,26 +164,12 @@ export default function PostDetail() {
             </form>
           )}
 
-          {(post.comments || []).slice().reverse().map((c) => (
+          {post.comments?.slice().reverse().map((c) => (
             <div key={c.id} className="bg-white rounded-xl shadow p-4">
-              <div className="flex items-center gap-2 mb-2">
-                {c.author_avatar ? (
-                  <img
-                    src={c.author_avatar}
-                    alt={c.author}
-                    className="w-8 h-8 rounded-full object-cover border border-[#E4D3B5]"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-[#E4D3B5] opacity-60" />
-                )}
-
-                <div className="flex flex-col leading-tight">
-                  <div className="text-sm font-semibold">{c.author}</div>
-                  <div className="text-xs text-gray-500">{fmt(c.created_at)}</div>
-                </div>
+              <div className="text-sm text-gray-500 mb-1">
+                {c.author}・{fmt(c.created_at)}
               </div>
-
-              <p className="whitespace-pre-wrap">{c.text}</p>
+              <p>{c.text}</p>
             </div>
           ))}
         </div>
