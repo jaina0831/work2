@@ -44,24 +44,17 @@ export default function ChatWidget() {
 
   const handleToggle = () => {
     setOpen((o) => !o);
-    // 開/關視窗時，把建議面板收起來，避免擋住
     setShowSuggestions(false);
   };
 
-  const handlePickSuggestion = (text) => {
-   
-    setInput(text);
-    setShowSuggestions(false);
-    setTimeout(() => handleSend(), 0);
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  // ✅ 讓「點提示後直接送出」不會踩到 setState 非同步
+  const handleSendText = async (text) => {
+    const content = (text ?? "").trim();
+    if (!content || loading) return;
     setErrorMsg("");
 
-    const newMessages = [...messages, { role: "user", content: input.trim() }];
+    const newMessages = [...messages, { role: "user", content }];
     setMessages(newMessages);
-    setInput("");
     setLoading(true);
 
     try {
@@ -72,13 +65,25 @@ export default function ChatWidget() {
       console.error(err);
       if (err?.response?.status === 401) {
         setErrorMsg("請先登入後再使用客服喔！");
-        // navigate("/login");
       } else {
         setErrorMsg("伺服器忙碌中，稍後再試一次～");
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePickSuggestion = (text) => {
+    setShowSuggestions(false);
+    setInput(""); // 可選：把輸入框清空（你也可以改成 setInput(text)）
+    handleSendText(text); // ✅ 點了就直接送出
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const text = input.trim();
+    setInput("");
+    await handleSendText(text);
   };
 
   const handleKeyDown = (e) => {
@@ -192,7 +197,7 @@ export default function ChatWidget() {
 
           {/* 輸入區 */}
           <div className="border-t border-[#E4D3B5] p-2 bg-white rounded-b-2xl relative">
-            {/* ✅ 建議問題面板（像 Meta AI 那樣） */}
+            {/* ✅ 建議問題面板 */}
             {showSuggestions && (
               <div
                 className="
@@ -216,7 +221,8 @@ export default function ChatWidget() {
                   </button>
                 </div>
 
-                <div className="max-h-44 overflow-y-auto space-y-2 px-1 pb-1">
+                {/* ✅ 這裡強制每個提示間隔 5px：gap-[5px] */}
+                <div className="max-h-44 overflow-y-auto flex flex-col gap-[5px] px-1 pb-1">
                   {SUGGESTIONS.map((q, i) => (
                     <button
                       key={i}
@@ -227,8 +233,8 @@ export default function ChatWidget() {
                         px-3 py-2 rounded-xl
                         bg-[#FFF9F0] border border-[#E4D3B5]
                         text-sm text-[#4A2A07]
-                        hover:bg-[#FFF3E0]
-                        active:bg-[#FFCF99]
+                        hover:bg-[#D6B788]
+                        active:bg-[#9C8A75]
                       "
                     >
                       {q}
@@ -263,8 +269,8 @@ export default function ChatWidget() {
                   text-xs font-semibold
                   bg-[#FFF3E0] border border-[#E4D3B5]
                   text-[#774422]
-                  hover:bg-[#FFCF99]
-                  active:bg-[#D6B788]
+                  hover:bg-[#D6B788]
+                  active:bg-[#9C8A75]
                 "
                 title="常見問題"
               >
