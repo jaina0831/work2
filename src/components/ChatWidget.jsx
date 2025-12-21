@@ -1,58 +1,77 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/apiClient";        // 你原本的 axios instance
+import { api } from "../lib/apiClient"; // 你原本的 axios instance
 import catAvatar from "../assets/cat.png"; // 先共用這張
 import chatbotIcon from "../assets/chatbot.png"; // 圓圈 icon，自行換檔名
 
 export default function ChatWidget() {
   const CHAT_STORAGE_KEY = "strayland_chat_v1";
+
+  // ✅ 常見問題建議（左下角提示按鍵會開啟）
+  const SUGGESTIONS = [
+    "請問這個網頁主要是要幹嘛？",
+    "請問台北市哪裡可以領養動物？",
+    "我撿到一隻流浪小狗，我可以帶她去哪裡檢查？",
+    "我撿到一隻流浪小狗，我可以帶她去哪個收容所呢？",
+    "哪裡有可以領養寵物的咖啡廳呢？",
+    "怎麼和寵物增加感情？",
+    "我想領養寵物，請問我需要具備什麼能力嗎？",
+  ];
+
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState(() => {
-  try {
-    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return [
-    {
-      role: "assistant",
-      content: "嗨～我是浪浪領地的小管家，有什麼想詢問的嗎？",
-    },
-  ];
-});
+    try {
+      const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [
+      {
+        role: "assistant",
+        content: "嗨～我是浪浪領地的小管家，有什麼想詢問的嗎？",
+      },
+    ];
+  });
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-useEffect(() => {
-  try {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-  } catch {}
-}, [messages]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    } catch {}
+  }, [messages]);
 
-  const handleToggle = () => setOpen((o) => !o);
+  const handleToggle = () => {
+    setOpen((o) => !o);
+    // 開/關視窗時，把建議面板收起來，避免擋住
+    setShowSuggestions(false);
+  };
+
+  const handlePickSuggestion = (text) => {
+   
+    setInput(text);
+    setShowSuggestions(false);
+    setTimeout(() => handleSend(), 0);
+  };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
     setErrorMsg("");
 
-    const newMessages = [
-      ...messages,
-      { role: "user", content: input.trim() },
-    ];
+    const newMessages = [...messages, { role: "user", content: input.trim() }];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
 
     try {
-      const res = await api.post("/chat", {
-        messages: newMessages,
-      });
+      const res = await api.post("/chat", { messages: newMessages });
       const reply = res.data.reply || "（小管家暫時忙碌中，再試一次 > <）";
       setMessages([...newMessages, { role: "assistant", content: reply }]);
     } catch (err) {
       console.error(err);
       if (err?.response?.status === 401) {
         setErrorMsg("請先登入後再使用客服喔！");
-        // 也可以直接跳轉登入
         // navigate("/login");
       } else {
         setErrorMsg("伺服器忙碌中，稍後再試一次～");
@@ -83,7 +102,6 @@ useEffect(() => {
           text-white
         "
       >
-        {/* 你可以改成圖示 */}
         <img
           src={chatbotIcon}
           alt="聊天小管家"
@@ -113,13 +131,14 @@ useEffect(() => {
                 <span className="text-sm font-bold text-[#774422]">
                   浪浪小管家
                 </span>
-                <span className="text-xs text-[#9C8A75]">
-                  線上客服
-                </span>
+                <span className="text-xs text-[#9C8A75]">線上客服</span>
               </div>
             </div>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                setShowSuggestions(false);
+              }}
               className="text-sm text-[#9C8A75] hover:text-[#D6B788]"
             >
               ✕
@@ -145,9 +164,10 @@ useEffect(() => {
                   <div
                     className={`
                       max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed
-                      ${isUser
-                        ? "bg-[#FFCF99] text-[#4A2A07] rounded-br-none"
-                        : "bg-white text-[#444444] rounded-bl-none border border-[#E4D3B5]"
+                      ${
+                        isUser
+                          ? "bg-[#FFCF99] text-[#4A2A07] rounded-br-none"
+                          : "bg-white text-[#444444] rounded-bl-none border border-[#E4D3B5]"
                       }
                     `}
                   >
@@ -156,11 +176,13 @@ useEffect(() => {
                 </div>
               );
             })}
+
             {loading && (
               <div className="text-xs text-[#9C8A75] text-center mt-1">
                 小管家思考中…
               </div>
             )}
+
             {errorMsg && (
               <div className="text-xs text-red-500 text-center mt-1">
                 {errorMsg}
@@ -169,7 +191,53 @@ useEffect(() => {
           </div>
 
           {/* 輸入區 */}
-          <div className="border-t border-[#E4D3B5] p-2 bg-white rounded-b-2xl">
+          <div className="border-t border-[#E4D3B5] p-2 bg-white rounded-b-2xl relative">
+            {/* ✅ 建議問題面板（像 Meta AI 那樣） */}
+            {showSuggestions && (
+              <div
+                className="
+                  absolute left-2 bottom-[92px] z-50
+                  w-[calc(100%-16px)]
+                  bg-white border border-[#E4D3B5] rounded-2xl shadow-xl
+                  p-2
+                "
+              >
+                <div className="flex items-center justify-between px-2 pb-1">
+                  <span className="text-xs font-semibold text-[#774422]">
+                    不知道要問什麼？可以點下面～
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(false)}
+                    className="text-xs text-[#9C8A75] hover:text-[#D6B788]"
+                    title="關閉"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="max-h-44 overflow-y-auto space-y-2 px-1 pb-1">
+                  {SUGGESTIONS.map((q, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handlePickSuggestion(q)}
+                      className="
+                        w-full text-left
+                        px-3 py-2 rounded-xl
+                        bg-[#FFF9F0] border border-[#E4D3B5]
+                        text-sm text-[#4A2A07]
+                        hover:bg-[#FFF3E0]
+                        active:bg-[#FFCF99]
+                      "
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <textarea
               rows={2}
               value={input}
@@ -183,16 +251,35 @@ useEffect(() => {
                 bg-[#FFF9F0]
               "
             />
-            <div className="flex justify-end mt-1">
+
+            {/* 下排：左邊提示按鈕 + 右邊發送按鈕 */}
+            <div className="flex items-center justify-between mt-1">
+              <button
+                type="button"
+                onClick={() => setShowSuggestions((v) => !v)}
+                className="
+                  inline-flex items-center gap-1
+                  px-2 py-1 rounded-lg
+                  text-xs font-semibold
+                  bg-[#FFF3E0] border border-[#E4D3B5]
+                  text-[#774422]
+                  hover:bg-[#FFCF99]
+                  active:bg-[#D6B788]
+                "
+                title="常見問題"
+              >
+                ☰ 提示
+              </button>
+
               <button
                 onClick={handleSend}
                 disabled={loading || !input.trim()}
                 className={`
-                  px-3 py-1 text-sm rounded-lg font-semibold
+                  px-3 py-1 text-sm rounded-lg font-semibold text-white
                   ${
                     loading || !input.trim()
-                      ? "bg-[#E4D3B5] text-white hover:bg-[#D6B788] not-[]:cursor-not-allowed"
-                      : "bg-[#E4D3B5] text-white hover:bg-[#D6B788] active:bg-[#9C8A75]"
+                      ? "bg-[#E4D3B5] cursor-not-allowed opacity-60"
+                      : "bg-[#E4D3B5] hover:bg-[#D6B788] active:bg-[#9C8A75]"
                   }
                 `}
               >

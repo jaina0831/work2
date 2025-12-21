@@ -110,8 +110,8 @@ const Signin = () => {
           </button>
 
           <div className="mt-4 text-center">
-            <Link to="/login" className="text-xs text-gray-500 underline">
-              返回 Login
+            <Link to="/login" className="text-xs text-gray-500">
+              已有帳號
             </Link>
           </div>
         </form>
