@@ -1,0 +1,14 @@
+# 不讓 Vercel 把後端當 Serverless Function 打包
+api/
+
+# 任何 Python 後端相關都不要打包到 Vercel
+*.py
+requirements.txt
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# secrets
+.env
+.env.*

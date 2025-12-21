@@ -28,10 +28,18 @@ dist-ssr
 .env.*
 !.env.example
 
-# ---- 保留需要被提交的檔案 ----
-!api/**
-!requirements.txt
-!.vercelignore
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
 
+# ---- API 資料夾：保留程式碼，但排除敏感檔 ----
+!api/**
+
+# 但 api 底下的 env 一律不要進 Git
 api/.env
-api/.env.local
+api/.env.*
+api/**/*.pem
+api/**/*.p12
+api/**/serviceAccount*.json
