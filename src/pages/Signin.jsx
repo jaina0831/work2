@@ -1,7 +1,7 @@
 // src/pages/Signin.jsx
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import petsIcon from "../assets/petsIcon.png";
 
@@ -36,12 +36,8 @@ const Signin = () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      const token = await user.getIdToken();
 
       console.log("註冊成功 Firebase user:", user);
-      console.log("ID Token:", token);
-      console.log("額外註冊資料：", { realName, nickname, phoneNumber, address });
-
       setMessage({
         type: "success",
         text: `註冊成功！Email：${email}，暱稱：${nickname}`,
@@ -55,7 +51,7 @@ const Signin = () => {
       setEmail("");
       setPassword("");
 
-      // 你如果想註冊成功直接跳登入頁，打開下面這行：
+      // 想註冊成功就回登入頁，打開這行
       // navigate("/login");
     } catch (error) {
       console.error("Firebase SignUp Error:", error);
@@ -71,9 +67,11 @@ const Signin = () => {
     }
   };
 
+  // ✅ 這邊用 mb-[10px] 硬保證每個 input 間隔 10px
   const inputClass =
     "appearance-none block w-full px-4 py-3 border border-gray-300 rounded-full shadow-sm bg-white " +
-    "focus:outline-none focus:ring-2 focus:ring-[#D6B788]/40";
+    "focus:outline-none focus:ring-2 focus:ring-[#D6B788]/40 " +
+    "mb-[10px]";
 
   return (
     <div
@@ -84,7 +82,7 @@ const Signin = () => {
         className="w-full max-w-sm sm:max-w-md rounded-2xl shadow-xl overflow-hidden"
         style={{
           backgroundColor: CARD_BG,
-          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0, 0, 0, 0.05)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.05)",
         }}
       >
         <div className="p-8 pb-4 text-gray-800 text-center">
@@ -96,11 +94,10 @@ const Signin = () => {
           <h2 className="font-bold text-lg mt-2">註冊帳號</h2>
         </div>
 
-        {/* ✅ 10px 間隔：space-y-[10px] */}
-        <form onSubmit={handleSubmit} className="px-8 pt-0 pb-8 space-y-[10px]">
+        <form onSubmit={handleSubmit} className="px-8 pt-0 pb-8">
           {message.text && (
             <div
-              className={`p-3 rounded-lg text-sm font-medium ${
+              className={`p-3 rounded-lg text-sm font-medium mb-[10px] ${
                 message.type === "error" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
               }`}
             >
@@ -116,7 +113,6 @@ const Signin = () => {
             disabled={loading}
             className={inputClass}
           />
-
           <input
             type="text"
             placeholder="暱稱"
@@ -125,7 +121,6 @@ const Signin = () => {
             disabled={loading}
             className={inputClass}
           />
-
           <input
             type="tel"
             placeholder="連絡電話"
@@ -134,7 +129,6 @@ const Signin = () => {
             disabled={loading}
             className={inputClass}
           />
-
           <input
             type="text"
             placeholder="住址"
@@ -143,7 +137,6 @@ const Signin = () => {
             disabled={loading}
             className={inputClass}
           />
-
           <input
             type="email"
             placeholder="Email（登入帳號）"
@@ -152,20 +145,23 @@ const Signin = () => {
             disabled={loading}
             className={inputClass}
           />
-
+          {/* 最後一個 input 不要多一個 mb，避免跟按鈕距離過大 */}
           <input
             type="password"
             placeholder="設定密碼（至少 6 碼）"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
-            className={inputClass}
+            className={inputClass.replace("mb-[10px]", "mb-0")}
           />
+
+          {/* ✅ 按鈕上方固定 10px */}
+          <div className="h-[10px]" />
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full flex justify-center py-3 px-4 rounded-full text-lg font-bold text-white ${
+            className={`w-full flex justify-center py-3 px-4 rounded-full text-lg font-bold shadow-lg ${
               loading
                 ? "bg-gray-400 cursor-not-allowed"
                 : "hover:bg-opacity-90 transform hover:scale-[1.01] active:scale-[0.98]"
@@ -173,18 +169,19 @@ const Signin = () => {
             style={{
               backgroundColor: ACCENT_COLOR,
               boxShadow: "0 4px 10px rgba(184, 140, 110, 0.4)",
+              color: "#ffffff", // ✅ 最高優先權，保證白字
             }}
           >
             {loading ? "註冊中..." : "註冊"}
           </button>
 
-          {/* ✅ 最下方中間：返回 login 小文字 */}
-          <div className="pt-2 text-center">
+          {/* ✅ 最下方中間：返回 login */}
+          <div className="mt-4 text-center">
             <Link
               to="/login"
-              className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-4"
+              className="text-xs text-gray-500 hover:text-gray-700 "
             >
-              返回註冊帳號
+              返回 Login
             </Link>
           </div>
         </form>

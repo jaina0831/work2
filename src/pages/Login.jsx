@@ -157,20 +157,21 @@ const Login = () => {
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
-            className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-lg text-lg font-bold text-white ${
-              loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "hover:bg-opacity-90 transform hover:scale-[1.01] active:scale-[0.98]"
-            }`}
-            style={{
-              backgroundColor: ACCENT_COLOR,
-              boxShadow: "0 4px 10px rgba(184, 140, 110, 0.4)",
-            }}
-          >
-            {loading ? "登入中..." : "登 入"}
-          </button>
+  type="submit"
+  disabled={loading}
+  className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-lg text-lg font-bold ${
+    loading
+      ? "bg-gray-400 cursor-not-allowed"
+      : "hover:bg-opacity-90 transform hover:scale-[1.01] active:scale-[0.98]"
+  }`}
+  style={{
+    backgroundColor: ACCENT_COLOR,
+    boxShadow: "0 4px 10px rgba(184, 140, 110, 0.4)",
+    color: "#ffffff", // ✅ 最高優先權，保證白字
+  }}
+>
+  {loading ? "登入中..." : "登 入"}
+</button>
         </form>
 
         <div className="px-8 pb-8 text-center">
