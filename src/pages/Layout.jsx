@@ -46,9 +46,6 @@ export default function Layout() {
             <NavLink to="/map" className={(s) => `${linkBase} ${active(s)}`}>
               地圖
             </NavLink>
-            <NavLink to="/care" className={(s) => `${linkBase} ${active(s)}`}>
-              社群
-            </NavLink>
             <NavLink to="/feed" className={(s) => `${linkBase} ${active(s)}`}>
               社群
             </NavLink>
