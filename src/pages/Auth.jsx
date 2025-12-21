@@ -3,11 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { auth, storage } from "../firebase";
-import {
-  signOut,
-  sendPasswordResetEmail,
-  updateProfile,
-} from "firebase/auth";
+import { signOut, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const CARD_BG = "#FFF7E6";
@@ -19,20 +15,22 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");   // ⭐ 新增：本地頭像狀態
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
     if (user) {
       setAvatarUrl(
-        user.photoURL ||
-          "https://placehold.co/120x120/EEE/AAA?text=Avatar"
+        user.photoURL || "https://placehold.co/120x120/EEE/AAA?text=Avatar"
       );
     }
   }, [user]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: APP_BG }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: APP_BG }}
+      >
         <p className="text-gray-500">載入中...</p>
       </div>
     );
@@ -45,7 +43,6 @@ const AuthPage = () => {
   const displayName = user.displayName || "未設定暱稱";
   const email = user.email;
 
-  // ✅ 上傳頭像並立即更新畫面
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -58,10 +55,7 @@ const AuthPage = () => {
       await uploadBytes(avatarRef, file);
       const url = await getDownloadURL(avatarRef);
 
-      // 更新 Firebase Auth
       await updateProfile(user, { photoURL: url });
-
-      // 立刻更新畫面上的頭像
       setAvatarUrl(url);
 
       setMsg("頭像更新成功！");
@@ -95,7 +89,7 @@ const AuthPage = () => {
       style={{ backgroundColor: APP_BG }}
     >
       <div
-        className="w-full max-w-md rounded-2xl shadow-xl p-8 space-y-6"
+        className="w-full max-w-md rounded-2xl shadow-xl p-8"
         style={{
           backgroundColor: CARD_BG,
           boxShadow:
@@ -110,7 +104,7 @@ const AuthPage = () => {
         </p>
 
         {msg && (
-          <div className="p-3 rounded-lg text-sm font-medium bg-amber-100 text-amber-800">
+          <div className="p-3 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 mb-4">
             {msg}
           </div>
         )}
@@ -139,17 +133,14 @@ const AuthPage = () => {
           </div>
 
           <div className="text-center">
-            <p className="text-lg font-semibold text-gray-800">
-              {displayName}
-            </p>
+            <p className="text-lg font-semibold text-gray-800">{displayName}</p>
             <p className="text-sm text-gray-500">{email}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              UID：{user.uid}
-            </p>
+            <p className="text-xs text-gray-400 mt-1">UID：{user.uid}</p>
           </div>
         </div>
 
-        <div className="mt-6 space-y-400">
+        {/* ✅ 按鈕區：保證 100px 間距的版本 */}
+        <div className="mt-6">
           <button
             type="button"
             onClick={handleResetPassword}
@@ -158,6 +149,9 @@ const AuthPage = () => {
           >
             寄送重設密碼信
           </button>
+
+          {/* ✅ 不管 space-y 有沒有吃到，這個 spacer 一定會撐出 100px */}
+          <div className="h-[100px]" />
 
           <button
             type="button"
