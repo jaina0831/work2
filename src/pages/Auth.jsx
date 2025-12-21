@@ -156,7 +156,7 @@ const AuthPage = () => {
           </button>
 
           {/* ✅ 固定間距 */}
-          <div className="h-[40px]" />
+          <div className="h-[20px]" />
 
           <button
             type="button"
