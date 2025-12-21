@@ -79,7 +79,7 @@ useEffect(() => {
           fixed bottom-6 right-6 z-50
           w-14 h-14 rounded-full shadow-lg
           flex items-center justify-center
-          bg-[#836054] hover:bg-[#9C8A75] active:bg-[#D6B788]
+          bg-[#836054] hover:bg-[#e7b76f] active:bg-[#D6B788]
           text-white
         "
       >

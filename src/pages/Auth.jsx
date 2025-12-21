@@ -8,7 +8,6 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const CARD_BG = "#FFF7E6";
 const APP_BG = "#FDF8F0";
-const ACCENT_COLOR = "#D6B788";
 
 const AuthPage = () => {
   const { user, loading } = useAuth();
@@ -43,6 +42,7 @@ const AuthPage = () => {
   const displayName = user.displayName || "未設定暱稱";
   const email = user.email;
 
+  // ✅ 上傳頭像並立即更新畫面
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -55,7 +55,10 @@ const AuthPage = () => {
       await uploadBytes(avatarRef, file);
       const url = await getDownloadURL(avatarRef);
 
+      // 更新 Firebase Auth
       await updateProfile(user, { photoURL: url });
+
+      // 立刻更新畫面上的頭像
       setAvatarUrl(url);
 
       setMsg("頭像更新成功！");
@@ -117,10 +120,7 @@ const AuthPage = () => {
               alt="avatar"
               className="w-24 h-24 rounded-full object-cover border border-amber-200"
             />
-            <label
-              className="absolute bottom-0 right-0 bg-white rounded-full px-2 py-1 text-xs font-medium shadow cursor-pointer"
-              style={{ color: ACCENT_COLOR }}
-            >
+            <label className="absolute bottom-0 right-0 bg-white rounded-full px-2 py-1 text-xs font-medium shadow cursor-pointer text-[#D6B788]">
               更換
               <input
                 type="file"
@@ -139,24 +139,29 @@ const AuthPage = () => {
           </div>
         </div>
 
-        {/* ✅ 按鈕區：保證 100px 間距的版本 */}
+        {/* ✅ 按鈕區 */}
         <div className="mt-6">
           <button
             type="button"
             onClick={handleResetPassword}
-            className="w-full py-2.5 rounded-full text-sm font-semibold text-white shadow"
-            style={{ backgroundColor: ACCENT_COLOR }}
+            className="
+              w-full py-2.5 rounded-full text-sm font-semibold text-white shadow
+              bg-[#D6B788]
+              hover:bg-[#e7b76f]
+              active:bg-[#D6B788]
+              transition-colors duration-150
+            "
           >
             寄送重設密碼信
           </button>
 
-          {/* ✅ 不管 space-y 有沒有吃到，這個 spacer 一定會撐出 100px */}
-          <div className="h-[100px]" />
+          {/* ✅ 固定間距 */}
+          <div className="h-[40px]" />
 
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+            className="w-full py-2.5 rounded-full text-sm font-semibold border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-150"
           >
             登出
           </button>
