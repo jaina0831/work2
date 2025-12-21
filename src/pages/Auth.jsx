@@ -149,7 +149,7 @@ const AuthPage = () => {
           </div>
         </div>
 
-        <div className="space-y-4 mt-4">
+        <div className="mt-6 space-y-4">
           <button
             type="button"
             onClick={handleResetPassword}
