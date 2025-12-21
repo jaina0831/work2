@@ -1,3 +1,4 @@
+// src/components/PostCard.jsx
 import { useEffect, useState } from "react";
 import { useLikePost, useCreateComment, useDeletePost } from "../lib/queries";
 import { fmt } from "../lib/date";
@@ -41,6 +42,7 @@ export default function PostCard({ post }) {
     const t = text.trim();
     if (!t) return;
 
+    // ✅ 後端用 token 決定作者，所以前端只送 post_id + text
     createComment.mutate({ post_id: post.id, text: t });
     setText("");
   };
@@ -92,7 +94,6 @@ export default function PostCard({ post }) {
         <p className="text-base mb-3 whitespace-pre-wrap">{post.content}</p>
 
         <div className="flex items-center gap-3 mb-2">
-          {/* ✅ 登入才可按讚/收回讚 */}
           <button className="btn btn-sm" onClick={onToggleLike} disabled={like.isPending}>
             👍 {post.likes_count ?? 0}
           </button>

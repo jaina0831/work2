@@ -1,3 +1,4 @@
+// src/lib/queries.js
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./apiClient";
 
@@ -48,6 +49,7 @@ export const useLikePost = () => {
 export const useCreateComment = () => {
   const qc = useQueryClient();
   return useMutation({
+    // ✅ payload: { post_id, text }
     mutationFn: (payload) => api.post(`/comments`, payload).then((r) => r.data),
     onSuccess: (_res, vars) => {
       qc.invalidateQueries({ queryKey: ["posts"] });

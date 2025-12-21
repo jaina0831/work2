@@ -1,7 +1,7 @@
 // src/pages/Signin.jsx
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { Link } from "react-router-dom";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
 import petsIcon from "../assets/petsIcon.png";
 
@@ -10,6 +10,8 @@ const CARD_BG = "#FFF7E6";
 const APP_BG = "#FDF8F0";
 
 const Signin = () => {
+  const navigate = useNavigate();
+
   const [realName, setRealName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -32,15 +34,23 @@ const Signin = () => {
     }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      setMessage({ type: "success", text: "註冊成功！" });
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
 
+      // ✅ 把「暱稱」寫進 Firebase Auth 的 displayName
+      await updateProfile(cred.user, { displayName: nickname });
+
+      setMessage({ type: "success", text: "註冊成功！已設定暱稱～" });
+
+      // 清空
       setRealName("");
       setNickname("");
       setPhoneNumber("");
       setAddress("");
       setEmail("");
       setPassword("");
+
+      // ✅ 直接帶去帳號中心或登入後的頁面
+      navigate("/auth");
     } catch (error) {
       let text = "註冊失敗，請稍後再試。";
       if (error.code === "auth/email-already-in-use") {
@@ -56,22 +66,14 @@ const Signin = () => {
     "appearance-none block w-full px-4 py-3 rounded-full border border-gray-300 bg-white shadow-sm";
 
   return (
-    <div
-      className="min-h-screen flex justify-center px-2 py-6"
-      style={{ backgroundColor: APP_BG }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl shadow-xl"
-        style={{ backgroundColor: CARD_BG }}
-      >
+    <div className="min-h-screen flex justify-center px-2 py-6" style={{ backgroundColor: APP_BG }}>
+      <div className="w-full max-w-md rounded-2xl shadow-xl" style={{ backgroundColor: CARD_BG }}>
         <div className="p-8 text-center">
           <div className="flex justify-center items-center mb-4">
             <img src={petsIcon} alt="logo" className="w-8 h-8" />
             <span className="ml-2 text-3xl font-bold">浪浪主人</span>
           </div>
-          <p className="text-sm text-gray-500 mb-2">
-            收養代替購買：給浪浪溫暖的家
-          </p>
+          <p className="text-sm text-gray-500 mb-2">收養代替購買：給浪浪溫暖的家</p>
           <h2 className="font-bold text-lg">註冊帳號</h2>
         </div>
 
@@ -89,7 +91,7 @@ const Signin = () => {
           )}
 
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="真實姓名" value={realName} onChange={(e) => setRealName(e.target.value)} />
-          <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="暱稱" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="暱稱（會顯示在社群留言/發文）" value={nickname} onChange={(e) => setNickname(e.target.value)} />
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="聯絡電話" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="住址" value={address} onChange={(e) => setAddress(e.target.value)} />
           <input style={{ marginBottom: 10 }} className={inputStyle} placeholder="信箱" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -100,10 +102,7 @@ const Signin = () => {
           <button
             type="submit"
             disabled={loading}
-            style={{
-              backgroundColor: ACCENT_COLOR,
-              color: "#fff",
-            }}
+            style={{ backgroundColor: ACCENT_COLOR, color: "#fff" }}
             className="w-full py-3 rounded-full text-lg font-bold shadow"
           >
             {loading ? "註冊中..." : "註冊"}
