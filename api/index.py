@@ -12,7 +12,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict, Any
 from uuid import uuid4
 import os
 import logging
@@ -32,37 +32,35 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
 
 # ---------------------------------------------------------
-# 讀取環境變數（本機用 .env，部署用 Render env）
+# env
 # ---------------------------------------------------------
 load_dotenv()
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_KEY:
-    # 這裡直接丟錯，後端啟動時就會知道 key 沒設好
     raise RuntimeError("Missing OPENAI_API_KEY")
 
 logger.info("OPENAI_API_KEY loaded: %s", "YES" if OPENAI_KEY else "NO")
 
-# 初始化 OpenAI client
 client = OpenAI(api_key=OPENAI_KEY)
 
 # ---------------------------------------------------------
-# 建立 FastAPI app
+# app
 # ---------------------------------------------------------
 app = FastAPI()
 
 # ---------------------------------------------------------
-# CORS 設定
+# CORS
 # ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://work2-phi.vercel.app",  # 前端正式網域（Vercel）
-        "http://localhost:5173",         # 本機開發
+        "https://work2-phi.vercel.app",
+        "http://localhost:5173",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],    # 有自訂 X-Client-Id、Authorization
+    allow_headers=["*"],
     expose_headers=["*"],
     max_age=86400,
 )
@@ -100,7 +98,6 @@ try:
     if not (firebase_project_id and firebase_private_key and firebase_client_email):
         logger.error("Missing Firebase service account envs")
     else:
-        # .env 若用 '\n' 表示換行，這裡還原
         private_key = firebase_private_key.replace("\\n", "\n")
 
         cred_info = {
@@ -128,13 +125,9 @@ except Exception:
 # ---------------------------------------------------------
 security = HTTPBearer(auto_error=False)
 
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     """
-    從 Authorization: Bearer <ID_TOKEN> 解析 Firebase 使用者。
-    前端必須登入 Firebase，並在打 API 時帶上 ID Token。
+    從 Authorization: Bearer <ID_TOKEN> 解析 Firebase 使用者
     """
     if firebase_app is None:
         raise HTTPException(500, "Firebase not configured")
@@ -145,14 +138,47 @@ def get_current_user(
     token = credentials.credentials
     try:
         decoded = firebase_auth.verify_id_token(token)
-        # decoded 會包含 uid、email 等資訊
         return decoded
     except Exception:
         logger.exception("verify_id_token failed")
         raise HTTPException(401, "Invalid or expired token")
 
 # ---------------------------------------------------------
-# Schemas
+# Helpers：從 Firebase 取得作者資訊（author / author_avatar）
+# ---------------------------------------------------------
+def _get_author_from_firebase(decoded: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    uid = decoded.get("uid")
+    email = decoded.get("email")
+    name = decoded.get("name")
+    picture = decoded.get("picture")
+
+    author = None
+    avatar = None
+
+    if name and isinstance(name, str) and name.strip():
+        author = name.strip()
+    if picture and isinstance(picture, str) and picture.strip():
+        avatar = picture.strip()
+
+    try:
+        if uid:
+            u = firebase_auth.get_user(uid)
+            if not author and u.display_name:
+                author = u.display_name
+            if not avatar and u.photo_url:
+                avatar = u.photo_url
+            if not author and u.email:
+                author = u.email
+    except Exception:
+        logger.warning("firebase_auth.get_user failed for uid=%s", uid)
+
+    if not author:
+        author = email or uid or "匿名"
+
+    return {"author": author, "author_avatar": avatar}
+
+# ---------------------------------------------------------
+# Schemas（命名完全配合你原本的 author）
 # ---------------------------------------------------------
 class CommentOut(BaseModel):
     id: int
@@ -160,7 +186,7 @@ class CommentOut(BaseModel):
     author: str
     text: str
     created_at: str
-
+    author_avatar: Optional[str] = None
 
 class PostOut(BaseModel):
     id: int
@@ -170,27 +196,22 @@ class PostOut(BaseModel):
     image_url: Optional[str] = None
     likes_count: int
     created_at: str
+    author_avatar: Optional[str] = None
     comments: List[CommentOut] = []
-
 
 class CommentIn(BaseModel):
     post_id: int
-    author: str
     text: str
 
-
 # ---- Chat schemas ----
-Role = Literal["system", "user", "assistant"]  # Pydantic 型別限制用
-
+Role = Literal["system", "user", "assistant"]
 
 class ChatMessage(BaseModel):
     role: Role
     content: str
 
-
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
-
 
 class ChatResponse(BaseModel):
     reply: str
@@ -198,6 +219,16 @@ class ChatResponse(BaseModel):
 # ---------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------
+def _row_to_comment_out(row) -> CommentOut:
+    return CommentOut(
+        id=row["id"],
+        post_id=row["post_id"],
+        author=row.get("author") or "匿名",
+        text=row.get("text") or "",
+        created_at=row["created_at"],
+        author_avatar=row.get("author_avatar"),
+    )
+
 def _row_to_post_with_comments(row) -> PostOut:
     if sb is None:
         raise HTTPException(500, "Supabase not configured")
@@ -209,16 +240,18 @@ def _row_to_post_with_comments(row) -> PostOut:
         .order("created_at", desc=True)
         .execute()
     )
-    comments = res.data or []
+    comments_rows = res.data or []
+    comments = [_row_to_comment_out(r) for r in comments_rows]
 
     return PostOut(
         id=row["id"],
-        author=row["author"],
-        title=row["title"],
-        content=row["content"],
+        author=row.get("author") or "匿名",
+        title=row.get("title") or "",
+        content=row.get("content") or "",
         image_url=row.get("image_url"),
         likes_count=row.get("likes_count", 0) or 0,
         created_at=row["created_at"],
+        author_avatar=row.get("author_avatar"),
         comments=comments,
     )
 
@@ -235,11 +268,9 @@ def root():
         }
     )
 
-
 @app.get("/health")
 def health():
     return {"ok": True}
-
 
 @app.get("/health/supabase")
 def health_supabase():
@@ -272,14 +303,11 @@ SYSTEM_PROMPT = """
 - 若涉及醫療，只能提供一般照護方向與提醒就醫，不可做診斷。
 
 【結尾規則】
-- 回答結尾請加一句簡短、溫暖的追問，例如：
-  「需要我幫你整理更詳細的地點嗎？」或
-  「你比較想了解哪一個部分呢？」
+- 回答結尾請加一句簡短、溫暖的追問
 
 如果不確定使用者需求，請先提出 1 個澄清問題再回答。
 """
 
-# ---- Chat route（secured，使用 Firebase 登入） ----
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_ai(payload: ChatRequest, user=Depends(get_current_user)):
     try:
@@ -301,7 +329,6 @@ async def chat_with_ai(payload: ChatRequest, user=Depends(get_current_user)):
         logger.exception("ERROR in /chat")
         raise HTTPException(status_code=500, detail="AI error")
 
-
 @app.get("/posts", response_model=List[PostOut])
 def list_posts():
     if sb is None:
@@ -315,7 +342,6 @@ def list_posts():
         or []
     )
     return [_row_to_post_with_comments(r) for r in rows]
-
 
 @app.get("/posts/{post_id}", response_model=PostOut)
 def get_post(post_id: int):
@@ -333,21 +359,23 @@ def get_post(post_id: int):
         raise HTTPException(404, "Post not found")
     return _row_to_post_with_comments(row)
 
-
+# ✅ 發文必須登入，author / author_avatar 從 Firebase 取得（不收前端 author）
 @app.post("/posts", response_model=PostOut)
 async def create_post(
-    author: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
     image: UploadFile | None = File(None),
-    user=Depends(get_current_user),  # 🔐 需要登入
+    user=Depends(get_current_user),
 ):
     try:
         if sb is None:
             raise HTTPException(500, "Supabase not configured")
 
-        image_url = None
+        author_info = _get_author_from_firebase(user)
+        author = author_info["author"]
+        author_avatar = author_info["author_avatar"]
 
+        image_url = None
         if image:
             ext = os.path.splitext(image.filename)[1].lower() or ".jpg"
             key = f"{uuid4().hex}{ext}"
@@ -356,32 +384,21 @@ async def create_post(
             up_res = sb.storage.from_("images").upload(
                 key,
                 data,
-                file_options={
-                    "contentType": image.content_type
-                    or "application/octet-stream"
-                },
+                file_options={"contentType": image.content_type or "application/octet-stream"},
             )
 
-            if getattr(up_res, "error", None) or (
-                isinstance(up_res, dict) and up_res.get("error")
-            ):
-                raise HTTPException(
-                    500,
-                    f"upload error: {getattr(up_res,'error',None) or up_res.get('error')}",
-                )
+            if getattr(up_res, "error", None) or (isinstance(up_res, dict) and up_res.get("error")):
+                raise HTTPException(500, f"upload error: {getattr(up_res,'error',None) or up_res.get('error')}")
 
             pub = sb.storage.from_("images").get_public_url(key)
-            image_url = (
-                pub
-                if isinstance(pub, str)
-                else (pub.get("publicUrl") if isinstance(pub, dict) else None)
-            )
+            image_url = pub if isinstance(pub, str) else (pub.get("publicUrl") if isinstance(pub, dict) else None)
 
         ins = (
             sb.table("posts")
             .insert(
                 {
                     "author": author,
+                    "author_avatar": author_avatar,  # ✅ 表建議要有這欄位，沒有也可先刪掉這行
                     "title": title,
                     "content": content,
                     "image_url": image_url,
@@ -399,34 +416,23 @@ async def create_post(
 
     except HTTPException:
         raise
-    except Exception as e:
-        import traceback, sys
-
-        print("POST /posts failed:", e, file=sys.stderr)
-        traceback.print_exc()
+    except Exception:
+        logger.exception("POST /posts failed")
         raise HTTPException(500, "internal_error")
 
-
+# ✅ 按讚/收回讚：必須登入，使用 Firebase uid 當唯一識別
+# ⚠️ 這裡我沿用 likes.device_id 欄位來存 uid（不需要改 schema）
 @app.post("/posts/{post_id}/like", response_model=PostOut)
-def toggle_like(
-    post_id: int,
-    x_client_id: Optional[str] = Header(None),
-    user=Depends(get_current_user),  # 🔐 需要登入
-):
+def toggle_like(post_id: int, user=Depends(get_current_user)):
     if sb is None:
         raise HTTPException(500, "Supabase not configured")
-    if not x_client_id:
-        raise HTTPException(400, "Missing X-Client-Id")
+
+    uid = user.get("uid")
+    if not uid:
+        raise HTTPException(401, "Invalid token (missing uid)")
+
     try:
-        liked = (
-            sb.table("likes")
-            .select("*")
-            .eq("post_id", post_id)
-            .eq("device_id", x_client_id)
-            .maybe_single()
-            .execute()
-            .data
-        )
+        # 取目前 post
         post = (
             sb.table("posts")
             .select("*")
@@ -438,23 +444,31 @@ def toggle_like(
         if not post:
             raise HTTPException(404, "Post not found")
 
+        # 查 likes 是否已存在（同一個 uid）
+        liked = (
+            sb.table("likes")
+            .select("*")
+            .eq("post_id", post_id)
+            .eq("device_id", uid)  # ✅ device_id 存 uid
+            .maybe_single()
+            .execute()
+            .data
+        )
+
         if liked:
+            # 收回讚
             sb.table("likes").delete().eq("id", liked["id"]).execute()
             sb.table("posts").update(
-                {
-                    "likes_count": max(
-                        0, (post.get("likes_count") or 0) - 1
-                    )
-                }
+                {"likes_count": max(0, (post.get("likes_count") or 0) - 1)}
             ).eq("id", post_id).execute()
         else:
-            sb.table("likes").insert(
-                {"post_id": post_id, "device_id": x_client_id}
-            ).execute()
+            # 按讚
+            sb.table("likes").insert({"post_id": post_id, "device_id": uid}).execute()
             sb.table("posts").update(
                 {"likes_count": (post.get("likes_count") or 0) + 1}
             ).eq("id", post_id).execute()
 
+        # 回傳更新後 post（含 comments）
         row = (
             sb.table("posts")
             .select("*")
@@ -464,17 +478,19 @@ def toggle_like(
             .data
         )
         return _row_to_post_with_comments(row)
+
     except HTTPException:
         raise
     except Exception:
         logger.exception("POST /posts/{post_id}/like failed")
         raise HTTPException(500, "internal_error")
 
-
+# ✅ 留言必須登入，author / author_avatar 從 Firebase 取得（不收前端 author）
 @app.post("/comments", response_model=CommentOut)
-def add_comment(payload: CommentIn, user=Depends(get_current_user)):  # 🔐
+def add_comment(payload: CommentIn, user=Depends(get_current_user)):
     if sb is None:
         raise HTTPException(500, "Supabase not configured")
+
     try:
         exists = (
             sb.table("posts")
@@ -486,23 +502,33 @@ def add_comment(payload: CommentIn, user=Depends(get_current_user)):  # 🔐
         )
         if not exists:
             raise HTTPException(404, "Post not found")
-        resp = sb.table("comments").insert(payload.__dict__).execute()
+
+        author_info = _get_author_from_firebase(user)
+
+        insert_payload = {
+            "post_id": payload.post_id,
+            "text": payload.text,
+            "author": author_info["author"],
+            "author_avatar": author_info["author_avatar"],  # ✅ 表建議要有這欄位，沒有也可先刪掉這行
+        }
+
+        resp = sb.table("comments").insert(insert_payload).execute()
         if not resp.data:
             raise HTTPException(500, "insert comments returned no data")
-        return resp.data[0]
+
+        return _row_to_comment_out(resp.data[0])
+
     except HTTPException:
         raise
     except Exception:
         logger.exception("POST /comments failed")
         raise HTTPException(500, "internal_error")
 
-
 @app.delete("/posts/{post_id}")
-def delete_post(post_id: int, user=Depends(get_current_user)):  # 🔐
+def delete_post(post_id: int, user=Depends(get_current_user)):
     if sb is None:
         raise HTTPException(500, "Supabase not configured")
 
-    # 先查這篇文章是否存在
     post = (
         sb.table("posts")
         .select("id, image_url")
@@ -511,24 +537,16 @@ def delete_post(post_id: int, user=Depends(get_current_user)):  # 🔐
         .execute()
         .data
     )
-
     if not post:
         raise HTTPException(404, "Post not found")
 
-    # --- 刪除 likes ---
     sb.table("likes").delete().eq("post_id", post_id).execute()
-
-    # --- 刪除 comments ---
     sb.table("comments").delete().eq("post_id", post_id).execute()
 
-    # --- 刪除圖片 (若有) ---
     image_url = post.get("image_url")
     if image_url:
-        # https://<project>.supabase.co/storage/v1/object/public/images/<filename>
         filename = image_url.split("/")[-1].split("?")[0]
         sb.storage.from_("images").remove([filename])
 
-    # --- 刪除文章本身 ---
     sb.table("posts").delete().eq("id", post_id).execute()
-
     return {"status": "ok", "deleted_id": post_id}
