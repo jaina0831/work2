@@ -1,148 +1,215 @@
-// src/pages/AnimalDetail.jsx
-// AnimalDetail 動物資訊詳細頁面 by Ting (fixed)
-
+// src/pages/PostDetail.jsx
 import { useParams, useNavigate } from "react-router-dom";
-import { animalsData } from "../data/animals";
-import { motion } from "framer-motion";
-import { useState, useEffect, useMemo } from "react";
-import DonateButton from "../components/DonateButton";
-
+import { usePost, useLikePost, useCreateComment, useDeletePost } from "../lib/queries";
+import { useEffect, useState } from "react";
+import { fmt } from "../lib/date";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
 
-export default function AnimalDetail() {
+import bin from "../assets/bin.png";
+import bin2 from "../assets/bin2.png";
+import heart from "../assets/heart.png";
+import heart2 from "../assets/heart2.png";
+import comment from "../assets/comment.png";
+
+function resolveUrl(path) {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  const base = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const animal = useMemo(
-    () => animalsData.find((a) => a.id === Number(id)),
-    [id]
-  );
+  const { data: post, isLoading } = usePost(Number(id));
+  const like = useLikePost();
+  const createComment = useCreateComment();
+  const del = useDeletePost();
 
-  const [showHeart, setShowHeart] = useState(false);
-  const [totalDonated, setTotalDonated] = useState(0);
-
-  // ✅ 追蹤登入狀態
   const [user, setUser] = useState(() => auth.currentUser);
+  const [hoverDelete, setHoverDelete] = useState(false);
+  const [text, setText] = useState("");
+  const [showImg, setShowImg] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  // ⭐ 計算該動物贊助總額（你原本就有）
-  useEffect(() => {
-    const records = JSON.parse(localStorage.getItem("sponsorList") || "[]");
-    const sum = records
-      .filter((r) => r.animalId === Number(id))
-      .reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-    setTotalDonated(sum);
-  }, [id]);
+  if (isLoading) return <div className="p-8">載入中…</div>;
+  if (!post) return <div className="p-8">找不到文章</div>;
 
-  if (!animal) return <div className="p-10 text-center">找不到動物資訊...</div>;
+  const imgSrc = resolveUrl(post.image_url);
+  const commentCount = post.comments?.length ?? 0;
 
-  const handleDonate = () => {
-    setShowHeart(true);
-    setTimeout(() => setShowHeart(false), 800);
+  const onToggleLike = () => {
+    if (!user) return navigate("/login");
+    like.mutate(post.id);
   };
 
-  function addToAdoptList() {
-    if (!user) {
-      alert("請先登入帳號，才能加入領養清單 🐾");
-      navigate("/login");
-      return;
-    }
+  // ✅ 修正：送 author / author_avatar（avatar 永遠是字串）
+  const submit = (e) => {
+    e.preventDefault();
+    if (!user) return navigate("/login");
 
-    // ✅ 分帳號存 key
-    const adoptListKey = `adoptList_${user.uid}`;
+    const t = text.trim();
+    if (!t) return;
 
-    const list = JSON.parse(localStorage.getItem(adoptListKey) || "[]");
+    createComment.mutate(
+      {
+        post_id: post.id,
+        text: t,
+        author: user.displayName || user.email || "匿名",
+        author_avatar: user.photoURL || "",
+      },
+      {
+        onSuccess: () => {
+          try {
+            const myComments = JSON.parse(localStorage.getItem("myComments") || "[]");
+            myComments.unshift({
+              id: Date.now(),
+              post_id: post.id,
+              postTitle: post.title || "無標題文章",
+              text: t,
+              created_at: new Date().toISOString(),
+              author: user.displayName || user.email || "匿名",
+              author_avatar: user.photoURL || "",
+            });
+            localStorage.setItem("myComments", JSON.stringify(myComments));
+          } catch (err) {
+            console.warn("save myComments failed:", err);
+          }
+        },
+      }
+    );
 
-    if (!list.find((a) => a.id === animal.id)) {
-      list.unshift({
-        ...animal,
-        owner_uid: user.uid,
-        owner_email: user.email || "",
-        added_at: new Date().toISOString(),
-      });
-      localStorage.setItem(adoptListKey, JSON.stringify(list));
-      alert(`${animal.name} 已加入領養清單 🧡`);
-    } else {
-      alert(`${animal.name} 已在領養清單中`);
-    }
-  }
+    setText("");
+  };
+
+  const onDelete = () => {
+    if (!user) return navigate("/login");
+    if (!confirm("確定要刪除這篇文章嗎？")) return;
+
+    del.mutate(post.id, {
+      onSuccess: () => {
+        try {
+          const myPosts = JSON.parse(localStorage.getItem("myPosts") || "[]");
+          const updatedPosts = myPosts.filter((p) => p.id !== post.id);
+          localStorage.setItem("myPosts", JSON.stringify(updatedPosts));
+        } catch (err) {
+          console.warn("update myPosts failed:", err);
+        }
+        navigate("/feed");
+      },
+    });
+  };
 
   return (
-    <div className="max-w-3xl mx-auto px-6 pt-6 pb-10">
-      <button
-        onClick={() => navigate(-1)}
-        className="px-4 py-2 rounded-lg bg-[#D67318] hover:bg-[#BB5500] active:bg-[#BB5500] transition text-white !text-white mb-6"
-      >
-        ⬅ &nbsp;返回
-      </button>
+    <div className="min-h-screen bg-[#fff9f0]">
+      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="relative bg-white rounded-2xl shadow-md p-6">
+            <button
+              onMouseEnter={() => setHoverDelete(true)}
+              onMouseLeave={() => setHoverDelete(false)}
+              onClick={onDelete}
+              className="absolute right-8 bottom-4 transition-transform hover:scale-110 active:scale-95"
+              title="刪除文章"
+              aria-label="刪除文章"
+            >
+              <img src={hoverDelete ? bin2 : bin} alt="刪除文章" className="w-6 h-6" />
+            </button>
 
-      <div className="mt-6">
-        <img
-          src={animal.image}
-          alt={animal.name}
-          className="block rounded-xl w-full h-96 object-cover"
-        />
-      </div>
+            <h1 className="text-3xl font-bold mb-2">{post.title}</h1>
 
-      <div className="mt-4 flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold tracking-wide">{animal.name}</h1>
-          <p className="text-gray-600 mt-2">
-            {animal.age} 歲 · {animal.gender} · {animal.breed}
-          </p>
+            <div className="flex items-center gap-3 mb-4 text-sm text-gray-500">
+              {post.author_avatar ? (
+                <img
+                  src={post.author_avatar}
+                  alt={post.author}
+                  className="w-8 h-8 rounded-full object-cover border border-[#E4D3B5]"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#E4D3B5] opacity-60" />
+              )}
+              <div>
+                <div>{post.author}</div>
+                <div className="text-xs">{fmt(post.created_at)}</div>
+              </div>
+            </div>
+
+            <p className="mb-4 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+
+            {imgSrc && showImg ? (
+              <img
+                src={imgSrc}
+                alt="post"
+                className="rounded-xl mb-4"
+                onError={() => setShowImg(false)}
+              />
+            ) : (
+              post.image_url && (
+                <div className="mb-4 rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
+                  圖片載入失敗
+                </div>
+              )
+            )}
+
+            <div className="flex items-center gap-6">
+              <button
+                onClick={onToggleLike}
+                className="flex items-center gap-2 transition-transform hover:scale-110 active:scale-95"
+                title={!user ? "請先登入才能按讚" : "按讚"}
+              >
+                <img src={post.is_liked ? heart2 : heart} alt="like" className="w-6 h-6" />
+                <span className="text-gray-700">{post.likes_count ?? 0}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <img src={comment} alt="comment" className="w-6 h-6 opacity-80" />
+                <span className="text-gray-700">{commentCount}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {totalDonated > 0 && (
-          <div className="bg-orange-50 border border-orange-200 px-4 py-2 rounded-lg text-right shadow-sm">
-            <p className="text-[10px] text-[#BB5500] font-bold uppercase tracking-tighter">
-              累計贊助
-            </p>
-            <p className="text-xl font-black text-[#BB5500]">
-              ${totalDonated.toLocaleString()}
-            </p>
-          </div>
-        )}
+        <div className="space-y-3">
+          {!user ? (
+            <div className="bg-white rounded-xl shadow p-4">
+              <div className="font-semibold mb-1">留言需要先登入帳號喔～</div>
+              <button className="btn btn-primary btn-sm" onClick={() => navigate("/login")}>
+                前往登入
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="bg-white rounded-xl shadow p-4">
+              <input
+                className="input input-bordered w-full"
+                placeholder="寫下留言..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                required
+              />
+              <div className="text-right mt-2">
+                <button className="btn btn-primary btn-sm" disabled={createComment.isPending}>
+                  {createComment.isPending ? "發布中…" : "發布"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {post.comments?.slice().reverse().map((c) => (
+            <div key={c.id} className="bg-white rounded-xl shadow p-4">
+              <div className="text-sm text-gray-500 mb-1">
+                {c.author}・{fmt(c.created_at)}
+              </div>
+              <p>{c.text}</p>
+            </div>
+          ))}
+        </div>
       </div>
-
-      <p className="text-gray-600 mt-2">
-        {animal.neutered ? "✅ 已結紮" : "❌ 未結紮"}
-      </p>
-
-      <p className="mt-4 text-gray-700 leading-relaxed">{animal.description}</p>
-
-      <div className="flex flex-wrap gap-4 mt-6">
-        <button
-          onClick={addToAdoptList}
-          className="px-5 py-2 rounded-xl bg-[#e6737d] hover:bg-[#c94b5c] active:bg-[#c34154] active:scale-[0.97] transition text-white !text-white"
-        >
-          加入領養清單
-        </button>
-
-        <button
-          onClick={() => navigate("/adoptlist")}
-          className="px-5 py-2 rounded-xl bg-[#e68673] hover:bg-[#c9604b] active:bg-[#c35741] active:scale-[0.97] transition text-white !text-white"
-        >
-          待領養清單
-        </button>
-
-        <DonateButton animalId={animal.id} animalName={animal.name} />
-      </div>
-
-      {showHeart && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 1, scale: 1.2 }}
-          exit={{ opacity: 0 }}
-          className="fixed bottom-10 right-10 text-4xl"
-        >
-          💖
-        </motion.div>
-      )}
     </div>
   );
 }

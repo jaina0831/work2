@@ -9,7 +9,6 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 const CARD_BG = "#FFF7E6";
 const APP_BG = "#FDF8F0";
 const ACCENT_COLOR = "#D6B788";
-
 const DEFAULT_AVATAR = "https://placehold.co/120x120/EEE/AAA?text=Avatar";
 
 const AuthPage = () => {
@@ -21,33 +20,22 @@ const AuthPage = () => {
   const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
 
   useEffect(() => {
-    if (user) {
-      setAvatarUrl(user.photoURL || DEFAULT_AVATAR);
-    }
+    if (user) setAvatarUrl(user.photoURL || DEFAULT_AVATAR);
   }, [user]);
 
-  const displayName = useMemo(() => {
-    return user?.displayName || "未設定暱稱";
-  }, [user]);
-
+  const displayName = useMemo(() => user?.displayName || "未設定暱稱", [user]);
   const email = user?.email || "";
 
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: APP_BG }}
-      >
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: APP_BG }}>
         <p className="text-gray-500">載入中...</p>
       </div>
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
-  // ✅ 上傳頭像並立即更新畫面
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -56,16 +44,11 @@ const AuthPage = () => {
       setUploading(true);
       setMsg("");
 
-      // 依 uid 存一份固定頭像
       const avatarRef = ref(storage, `avatars/${user.uid}`);
       await uploadBytes(avatarRef, file);
-
       const url = await getDownloadURL(avatarRef);
 
-      // 更新 Firebase Auth 的 photoURL
       await updateProfile(user, { photoURL: url });
-
-      // 立刻更新畫面
       setAvatarUrl(url);
       setMsg("頭像更新成功！");
     } catch (error) {
@@ -73,7 +56,6 @@ const AuthPage = () => {
       setMsg("更新頭像失敗，請稍後再試。");
     } finally {
       setUploading(false);
-      // 讓同一張圖也能重選觸發 onChange
       e.target.value = "";
     }
   };
@@ -94,40 +76,31 @@ const AuthPage = () => {
     navigate("/login");
   };
 
-  // ✅ 功能選單（你可自行調整路由）
+  // ✅ 你的圖一要能點進「我的發文/留言紀錄」→ 這裡改成 false
   const menuItems = [
-    { label: "🐾 我的收養書籤", to: "/adoptlist", disabled: false },
-    { label: "💰 已贊助清單", to: "/sponsorlist", disabled: false },
-    { label: "📝 我的發文（開發中）", to: "/myposts", disabled: true },
-    { label: "💬 留言清單（開發中）", to: "/mycomments", disabled: true },
+    { label: "🐾 我的收養書籤", to: "/adoptlist" },
+    { label: "💰 已贊助清單", to: "/sponsorlist" },
+    { label: "📝 我的發文紀錄", to: "/myposts" },
+    { label: "💬 我的留言紀錄", to: "/mycomments" },
   ];
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 py-8"
-      style={{ backgroundColor: APP_BG }}
-    >
+    <div className="min-h-screen flex items-center justify-center px-4 py-8" style={{ backgroundColor: APP_BG }}>
       <div
         className="w-full max-w-md rounded-2xl shadow-xl px-7 py-8"
         style={{
           backgroundColor: CARD_BG,
-          boxShadow:
-            "0 10px 30px rgba(0,0,0,0.10), 0 5px 15px rgba(0,0,0,0.05)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.10), 0 5px 15px rgba(0,0,0,0.05)",
         }}
       >
-        {/* 標題 */}
-        <h1 className="text-2xl font-bold text-center text-gray-800">
-          帳號中心
-        </h1>
+        <h1 className="text-2xl font-bold text-center text-gray-800">帳號中心</h1>
 
-        {/* 提示訊息 */}
         {msg && (
           <div className="mt-4 p-3 rounded-xl text-sm font-medium bg-amber-100 text-amber-800 text-center">
             {msg}
           </div>
         )}
 
-        {/* 頭像 + 基本資訊 */}
         <div className="mt-6 flex flex-col items-center">
           <div className="relative">
             <img
@@ -160,29 +133,22 @@ const AuthPage = () => {
           </div>
         </div>
 
-        {/* 分隔線 */}
         <div className="mt-6 border-t border-amber-200/60" />
 
-        {/* 功能選單 */}
         <div className="mt-5">
-          <p className="text-xs font-bold text-gray-400 tracking-wider">
-            記錄查詢
-          </p>
-
+          <p className="text-xs font-bold text-gray-400 tracking-wider">記錄查詢</p>
           <div className="mt-3 space-y-3">
             {menuItems.map((item) => (
               <button
                 key={item.label}
                 type="button"
-                onClick={() => !item.disabled && navigate(item.to)}
-                disabled={item.disabled}
-                className={`
+                onClick={() => navigate(item.to)}
+                className="
                   w-full flex justify-between items-center
                   px-5 py-3 rounded-xl
                   bg-white border border-amber-100
-                  transition-all
-                  ${item.disabled ? "opacity-50 cursor-not-allowed" : "hover:border-amber-300"}
-                `}
+                  transition-all hover:border-amber-300
+                "
               >
                 <span className="text-gray-700 font-medium">{item.label}</span>
                 <span className="text-gray-400">→</span>
@@ -191,8 +157,8 @@ const AuthPage = () => {
           </div>
         </div>
 
-        {/* 下方按鈕 */}
-        <div className="mt-7 space-y-3">
+        {/* ✅ 這裡改成固定 10px 間距 */}
+        <div className="mt-7">
           <button
             type="button"
             onClick={handleResetPassword}
@@ -201,6 +167,8 @@ const AuthPage = () => {
           >
             寄送重設密碼信
           </button>
+
+          <div className="h-[10px]" />
 
           <button
             type="button"
