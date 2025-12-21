@@ -79,7 +79,7 @@ useEffect(() => {
           fixed bottom-6 right-6 z-50
           w-14 h-14 rounded-full shadow-lg
           flex items-center justify-center
-          bg-[#836054] hover:bg-[#f0d9ac] active:bg-[#D6B788]
+          bg-[#836054] hover:bg-[#9C8A75] active:bg-[#D6B788]
           text-white
         "
       >
@@ -87,7 +87,7 @@ useEffect(() => {
         <img
           src={chatbotIcon}
           alt="聊天小管家"
-          className="w-9 h-9 object-cover rounded-full"
+          className="w-12 h-12 object-cover rounded-full"
         />
       </button>
 
