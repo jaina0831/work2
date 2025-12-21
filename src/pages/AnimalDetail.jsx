@@ -1,46 +1,71 @@
-// AnimalDetail 動物資訊詳細頁面 by Ting
+// src/pages/AnimalDetail.jsx
+// AnimalDetail 動物資訊詳細頁面 by Ting (fixed)
+
 import { useParams, useNavigate } from "react-router-dom";
 import { animalsData } from "../data/animals";
-import { motion } from "framer-motion"; 
-import { useState, useEffect } from "react"; // ✅ 修改點：引入 useEffect
+import { motion } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 import DonateButton from "../components/DonateButton";
+
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebase";
 
 export default function AnimalDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const animal = animalsData.find((a) => a.id === Number(id));
 
-  const [showHeart, setShowHeart] = useState(false); 
-  
-  // ⭐ 新增：儲存該動物目前被贊助的總金額
+  const animal = useMemo(
+    () => animalsData.find((a) => a.id === Number(id)),
+    [id]
+  );
+
+  const [showHeart, setShowHeart] = useState(false);
   const [totalDonated, setTotalDonated] = useState(0);
 
-  // ⭐ 新增：從 localStorage 計算該動物目前的贊助總額
+  // ✅ 追蹤登入狀態
+  const [user, setUser] = useState(() => auth.currentUser);
+
   useEffect(() => {
-    const records = JSON.parse(localStorage.getItem("sponsorList")) || [];
-    // 過濾出屬於這隻動物的贊助紀錄並加總
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
+
+  // ⭐ 計算該動物贊助總額（你原本就有）
+  useEffect(() => {
+    const records = JSON.parse(localStorage.getItem("sponsorList") || "[]");
     const sum = records
       .filter((r) => r.animalId === Number(id))
-      .reduce((acc, curr) => acc + curr.amount, 0);
+      .reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
     setTotalDonated(sum);
   }, [id]);
 
+  if (!animal) return <div className="p-10 text-center">找不到動物資訊...</div>;
+
   const handleDonate = () => {
     setShowHeart(true);
-    setTimeout(() => setShowHeart(false), 800); 
+    setTimeout(() => setShowHeart(false), 800);
   };
 
   function addToAdoptList() {
-    const user = localStorage.getItem("user");
     if (!user) {
       alert("請先登入帳號，才能加入領養清單 🐾");
+      navigate("/login");
       return;
     }
 
-    const list = JSON.parse(localStorage.getItem("adoptList")) || [];
+    // ✅ 分帳號存 key
+    const adoptListKey = `adoptList_${user.uid}`;
+
+    const list = JSON.parse(localStorage.getItem(adoptListKey) || "[]");
+
     if (!list.find((a) => a.id === animal.id)) {
-      list.push(animal);
-      localStorage.setItem("adoptList", JSON.stringify(list));
+      list.unshift({
+        ...animal,
+        owner_uid: user.uid,
+        owner_email: user.email || "",
+        added_at: new Date().toISOString(),
+      });
+      localStorage.setItem(adoptListKey, JSON.stringify(list));
       alert(`${animal.name} 已加入領養清單 🧡`);
     } else {
       alert(`${animal.name} 已在領養清單中`);
@@ -64,7 +89,6 @@ export default function AnimalDetail() {
         />
       </div>
 
-      {/* ✅ 修改：標題區塊改為 flex 並加入贊助金額顯示 */}
       <div className="mt-4 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-wide">{animal.name}</h1>
@@ -73,11 +97,14 @@ export default function AnimalDetail() {
           </p>
         </div>
 
-        {/* ⭐ 新增：顯示這隻動物收到的贊助總金額標籤 */}
         {totalDonated > 0 && (
           <div className="bg-orange-50 border border-orange-200 px-4 py-2 rounded-lg text-right shadow-sm">
-            <p className="text-[10px] text-[#BB5500] font-bold uppercase tracking-tighter">累計贊助</p>
-            <p className="text-xl font-black text-[#BB5500]">${totalDonated.toLocaleString()}</p>
+            <p className="text-[10px] text-[#BB5500] font-bold uppercase tracking-tighter">
+              累計贊助
+            </p>
+            <p className="text-xl font-black text-[#BB5500]">
+              ${totalDonated.toLocaleString()}
+            </p>
           </div>
         )}
       </div>
@@ -97,15 +124,25 @@ export default function AnimalDetail() {
         </button>
 
         <button
-          onClick={() => navigate('/AdoptList')}
+          onClick={() => navigate("/adoptlist")}
           className="px-5 py-2 rounded-xl bg-[#e68673] hover:bg-[#c9604b] active:bg-[#c35741] active:scale-[0.97] transition text-white !text-white"
         >
           待領養清單
         </button>
 
-        {/* ✅ 修改：將當前動物 ID 傳入贊助組件 */}
         <DonateButton animalId={animal.id} animalName={animal.name} />
       </div>
+
+      {showHeart && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: 1.2 }}
+          exit={{ opacity: 0 }}
+          className="fixed bottom-10 right-10 text-4xl"
+        >
+          💖
+        </motion.div>
+      )}
     </div>
   );
 }
