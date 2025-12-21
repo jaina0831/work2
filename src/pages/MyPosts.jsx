@@ -44,10 +44,10 @@ export default function MyPosts() {
                   </div>
 
                   <button
-                    onClick={() => navigate(`/posts/${p.id}`)}
-                    className="px-4 py-2 rounded-lg border border-[#c76c21] text-[#c76c21] hover:bg-[#c76c21] hover:text-white transition text-sm font-semibold"
+                    onClick={() => navigate(`/posts/${c.post_id}`)}
+                    className="ml-4 text-sm font-semibold text-[#c76c21] hover:underline whitespace-nowrap"
                   >
-                    詳情
+                    前往文章 →
                   </button>
                 </div>
               ))}
