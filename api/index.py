@@ -54,7 +54,9 @@ app.add_middleware(
     allow_origins=[
         "https://work2-phi.vercel.app",
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -120,6 +122,7 @@ except Exception:
 # ---------------------------------------------------------
 security = HTTPBearer(auto_error=False)
 
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> Dict[str, Any]:
@@ -136,6 +139,7 @@ def get_current_user(
         logger.exception("verify_id_token failed")
         raise HTTPException(401, "Invalid or expired token")
 
+
 def get_optional_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> Optional[Dict[str, Any]]:
@@ -147,6 +151,7 @@ def get_optional_user(
     except HTTPException:
         return None
 
+
 # ---------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------
@@ -154,8 +159,10 @@ class CommentOut(BaseModel):
     id: int
     post_id: int
     author: str
+    author_avatar: str = ""  # ✅ 新增：避免 DB NOT NULL / 也方便前端顯示頭像
     text: str
     created_at: str
+
 
 class PostOut(BaseModel):
     id: int
@@ -169,27 +176,33 @@ class PostOut(BaseModel):
     is_liked: bool = False
     comments: List[CommentOut] = []
 
+
 class CommentIn(BaseModel):
     post_id: int
     text: str
 
-# ---- Chat schemas ----
+
 Role = Literal["system", "user", "assistant"]
+
 
 class ChatMessage(BaseModel):
     role: Role
     content: str
 
+
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
 
+
 class ChatResponse(BaseModel):
     reply: str
+
 
 # ---------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------
 _user_cache: Dict[str, Dict[str, Optional[str]]] = {}
+
 
 def get_user_profile(uid: str) -> Dict[str, Optional[str]]:
     """
@@ -214,6 +227,19 @@ def get_user_profile(uid: str) -> Dict[str, Optional[str]]:
         _user_cache[uid] = profile
         return profile
 
+
+def _coerce_comment(c: Dict[str, Any]) -> CommentOut:
+    """把 Supabase raw row 轉成 CommentOut，並防止 NULL 值炸 Pydantic"""
+    return CommentOut(
+        id=c["id"],
+        post_id=c["post_id"],
+        author=(c.get("author") or "匿名"),
+        author_avatar=(c.get("author_avatar") or ""),
+        text=(c.get("text") or ""),
+        created_at=c["created_at"],
+    )
+
+
 def _row_to_post_with_comments(row, viewer_uid: Optional[str]) -> PostOut:
     if sb is None:
         raise HTTPException(500, "Supabase not configured")
@@ -226,7 +252,8 @@ def _row_to_post_with_comments(row, viewer_uid: Optional[str]) -> PostOut:
         .order("created_at", desc=True)
         .execute()
     )
-    comments = cres.data or []
+    raw_comments = cres.data or []
+    comments = [_coerce_comment(c) for c in raw_comments]
 
     # is_liked
     is_liked = False
@@ -235,7 +262,7 @@ def _row_to_post_with_comments(row, viewer_uid: Optional[str]) -> PostOut:
             sb.table("likes")
             .select("id")
             .eq("post_id", row["id"])
-            .eq("device_id", viewer_uid)  # 用 uid 當 device_id
+            .eq("device_id", viewer_uid)
             .limit(1)
             .execute()
         )
@@ -243,19 +270,19 @@ def _row_to_post_with_comments(row, viewer_uid: Optional[str]) -> PostOut:
 
     return PostOut(
         id=row["id"],
-        author=row.get("author") or "匿名",
-        title=row.get("title") or "",
-        content=row.get("content") or "",
+        author=(row.get("author") or "匿名"),
+        title=(row.get("title") or ""),
+        content=(row.get("content") or ""),
         image_url=row.get("image_url"),
         author_avatar=row.get("author_avatar"),
-        likes_count=row.get("likes_count", 0) or 0,
+        likes_count=(row.get("likes_count") or 0),
         created_at=row["created_at"],
         is_liked=is_liked,
         comments=comments,
     )
 
+
 def recompute_likes_count(post_id: int) -> int:
-    """最穩：每次 like/unlike 後，重新計算 likes 表數量，回寫 posts.likes_count"""
     if sb is None:
         raise HTTPException(500, "Supabase not configured")
 
@@ -271,6 +298,7 @@ def recompute_likes_count(post_id: int) -> int:
     sb.table("posts").update({"likes_count": count}).eq("id", post_id).execute()
     return count
 
+
 # ---------------------------------------------------------
 # Routes
 # ---------------------------------------------------------
@@ -284,17 +312,19 @@ def root():
         }
     )
 
+
 @app.get("/health")
 def health():
     return {"ok": True}
+
 
 @app.get("/health/supabase")
 def health_supabase():
     return {"sb": bool(sb)}
 
+
 SYSTEM_PROMPT = """
 你是「浪浪領地的小管家」，語氣溫暖可愛但不裝傻，使用繁體中文。
-...（略，保留你原本內容即可）
 """
 
 @app.post("/chat", response_model=ChatResponse)
@@ -313,10 +343,10 @@ async def chat_with_ai(payload: ChatRequest, user=Depends(get_current_user)):
 
         reply = completion.choices[0].message.content
         return {"reply": reply}
-
     except Exception:
         logger.exception("ERROR in /chat")
         raise HTTPException(status_code=500, detail="AI error")
+
 
 # ---------------------------
 # Posts (GET 可不登入；POST/LIKE/DELETE 必須登入)
@@ -338,6 +368,7 @@ def list_posts(user=Depends(get_optional_user)):
     )
     return [_row_to_post_with_comments(r, viewer_uid) for r in rows]
 
+
 @app.get("/posts/{post_id}", response_model=PostOut)
 def get_post(post_id: int, user=Depends(get_optional_user)):
     if sb is None:
@@ -358,6 +389,7 @@ def get_post(post_id: int, user=Depends(get_optional_user)):
 
     return _row_to_post_with_comments(row, viewer_uid)
 
+
 @app.post("/posts", response_model=PostOut)
 async def create_post(
     title: str = Form(...),
@@ -372,7 +404,7 @@ async def create_post(
         uid = user.get("uid")
         profile = get_user_profile(uid)
         author = profile.get("displayName") or profile.get("email") or "匿名"
-        author_avatar = profile.get("photoURL")
+        author_avatar = profile.get("photoURL") or ""
 
         image_url = None
         if image:
@@ -430,6 +462,7 @@ async def create_post(
         logger.exception("POST /posts failed")
         raise HTTPException(500, "internal_error")
 
+
 @app.post("/posts/{post_id}/like", response_model=PostOut)
 def toggle_like(post_id: int, user=Depends(get_current_user)):
     if sb is None:
@@ -449,7 +482,6 @@ def toggle_like(post_id: int, user=Depends(get_current_user)):
         if not post:
             raise HTTPException(404, "Post not found")
 
-        # ✅ 不用 maybe_single，避免 406
         liked_rows = (
             sb.table("likes")
             .select("id")
@@ -467,7 +499,6 @@ def toggle_like(post_id: int, user=Depends(get_current_user)):
         else:
             sb.table("likes").insert({"post_id": post_id, "device_id": uid}).execute()
 
-        # ✅ 每次重算最穩（避免多點同時按造成錯）
         recompute_likes_count(post_id)
 
         row = (
@@ -486,6 +517,7 @@ def toggle_like(post_id: int, user=Depends(get_current_user)):
         logger.exception("POST /posts/{post_id}/like failed")
         raise HTTPException(500, "internal_error")
 
+
 @app.post("/comments", response_model=CommentOut)
 def add_comment(payload: CommentIn, user=Depends(get_current_user)):
     if sb is None:
@@ -493,7 +525,9 @@ def add_comment(payload: CommentIn, user=Depends(get_current_user)):
 
     uid = user.get("uid")
     profile = get_user_profile(uid)
+
     author = profile.get("displayName") or profile.get("email") or "匿名"
+    author_avatar = profile.get("photoURL") or ""  # ✅ 重點：永遠不給 None，避免 NOT NULL 爆炸
 
     try:
         exists = (
@@ -510,19 +544,22 @@ def add_comment(payload: CommentIn, user=Depends(get_current_user)):
         insert_payload = {
             "post_id": payload.post_id,
             "author": author,
+            "author_avatar": author_avatar,  # ✅ 必填欄位要塞
             "text": payload.text,
         }
 
         resp = sb.table("comments").insert(insert_payload).execute()
         if not resp.data:
             raise HTTPException(500, "insert comments returned no data")
-        return resp.data[0]
+
+        return _coerce_comment(resp.data[0])
 
     except HTTPException:
         raise
     except Exception:
         logger.exception("POST /comments failed")
         raise HTTPException(500, "internal_error")
+
 
 @app.delete("/posts/{post_id}")
 def delete_post(post_id: int, user=Depends(get_current_user)):
