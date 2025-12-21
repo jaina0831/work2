@@ -6,8 +6,12 @@ import AnimalCard from "../components/AnimalCard";
 import { useState } from "react";
 import { animalsData } from "../data/animals";
 import { Space } from "antd";
+import { useAuth } from "../context/AuthContext"; //new
+import { useNavigate } from "react-router-dom"; //new
 
 export default function Report() {
+  const { user } = useAuth(); // 【新增】取得全域登入狀態
+  const navigate = useNavigate(); // 【新增】取得跳轉頁面的函式
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all"); // all / cat / dog
@@ -38,6 +42,19 @@ export default function Report() {
   const totalPages = Math.ceil(filteredAnimals.length / perPage);
   const start = (currentPage - 1) * perPage;
   const currentAnimals = filteredAnimals.slice(start, start + perPage);
+
+  // 【新增】處理卡片點擊的邏輯
+  const handleAnimalClick = (id) => {
+    if (!user) {
+      // 1. 如果沒登入，跳出提醒
+      alert("請先登入帳號，才能查看動物詳情與進行收養喔！");
+      // 2. 導向登入頁面
+      navigate("/login");
+    } else {
+      // 3. 已登入，正常前往詳細頁面
+      navigate(`/report/${id}`);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -91,14 +108,19 @@ export default function Report() {
       </div>
 
       
-      {/* ✅ 卡片區 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-        {currentAnimals.map((animal) => (
-          <Link key={animal.id} to={`${animal.id}`}>
-            <AnimalCard animal={animal} />
-          </Link>
-        ))}
-      </div>
+      {/* ✅ 卡片區 (修改點：將 Link 改為手動點擊判斷) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          {currentAnimals.map((animal) => (
+            <div 
+              key={animal.id} 
+              onClick={() => handleAnimalClick(animal.id)} 
+              className="cursor-pointer transition hover:opacity-80"
+            >
+              {/* 這裡不再包 Link，由父層 div 的 onClick 控制 */}
+              <AnimalCard animal={animal} />
+            </div>
+          ))}
+        </div>
 
       {/* ✅ 分頁 */}
       <div className="flex justify-center mt-12 space-x-2">

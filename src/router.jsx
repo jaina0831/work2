@@ -13,6 +13,9 @@ import AdoptConfirm from "./pages/AdoptConfirm.jsx";
 import Login from "./pages/Login.jsx";
 import Signin from "./pages/Signin.jsx";
 import AuthPage from "./pages/Auth.jsx"; 
+import SponsorList from "./pages/SponsorList.jsx"; // ✅ 新增
+import MyPosts from "./pages/MyPosts.jsx";     // ✅ 新增
+import MyComments from "./pages/MyComments.jsx"; // ✅ 新增
 
 
 // 1. 建立一個簡單的延遲函式
@@ -37,6 +40,9 @@ export const router = createBrowserRouter([
       { path: "/login", element: <Login /> },
       { path: "/signin", element: <Signin /> },
       { path: "/auth", element: <AuthPage /> },
+       { path: "/sponsorlist", element: <SponsorList /> }, // ✅ 新增
+      { path: "/myposts", element: <MyPosts /> },      // ✅ 新增
+      { path: "/mycomments", element: <MyComments /> }, // ✅ 新增
     ],
   },
 ]);

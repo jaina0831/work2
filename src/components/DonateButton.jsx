@@ -1,8 +1,10 @@
+
 // 贊助按鈕 by Ting（調整色票＋間距）
 import { useState } from "react";
 import { motion } from "framer-motion";
 
-export default function DonateButton() {
+// ✅ 修改：組件現在接收 animalId 和 animalName
+export default function DonateButton({ animalId, animalName }) {
   const [showHeart, setShowHeart] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(false);
 
@@ -17,15 +19,9 @@ export default function DonateButton() {
   return (
     <>
       <div className="relative">
-        {/* 觸發鈕 → #BB5500 */}
         <button
           onClick={handleDonate}
-          className="
-            px-5 py-2 rounded-xl
-            bg-[#e7b76f] hover:bg-[#BB5500] active:bg-[#994400]
-            active:scale-[0.95] flex items-center gap-2
-          text-white !text-white
-          "
+          className="px-5 py-2 rounded-xl bg-[#e7b76f] hover:bg-[#BB5500] active:bg-[#994400] active:scale-[0.95] flex items-center gap-2 text-white !text-white"
         >
           贊助 ❤
         </button>
@@ -42,20 +38,51 @@ export default function DonateButton() {
         )}
       </div>
 
-      {showDonateModal && <DonateModal onClose={() => setShowDonateModal(false)} />}
+      {/* ✅ 修改：將相關資訊傳給 Modal */}
+      {showDonateModal && (
+        <DonateModal 
+          animalId={animalId} 
+          animalName={animalName} 
+          onClose={() => setShowDonateModal(false)} 
+        />
+      )}
     </>
   );
 }
 
-function DonateModal({ onClose }) {
+function DonateModal({ onClose, animalId, animalName }) {
   const [customAmount, setCustomAmount] = useState("");
 
+  // ⭐ 新增：處理贊助存儲邏輯
   const donate = (amount) => {
-    alert(`感謝你捐款 ${amount} 元 🧡`);
+    const numAmount = Number(amount);
+    
+    if (!numAmount || numAmount <= 0) {
+      alert("請輸入有效的贊助金額 🐾");
+      return;
+    }
+
+    // 1. 取得舊有紀錄
+    const records = JSON.parse(localStorage.getItem("sponsorList")) || [];
+    
+    // 2. 加入新紀錄 (包含動物 ID、名稱、金額、時間)
+    records.push({
+      animalId: animalId,
+      animalName: animalName,
+      amount: numAmount,
+      date: new Date().toLocaleString()
+    });
+
+    // 3. 存回 localStorage
+    localStorage.setItem("sponsorList", JSON.stringify(records));
+
+    alert(`感謝你捐款 ${numAmount} 元給 ${animalName} 🧡`);
+    
+    // 4. 關閉視窗並重新整理頁面以更新 AnimalDetail 的顯示金額
     onClose();
+    window.location.reload(); 
   };
 
-  // 按鈕色票：有自訂金額 → #994400；否則 → #BB5500；hover 都有
   const donateBtnColor = customAmount
     ? "bg-[#BB5500] hover:bg-[#994400]"
     : "bg-[#e7b76f] hover:bg-[#994400]";
@@ -63,9 +90,9 @@ function DonateModal({ onClose }) {
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-black/10 flex justify-center items-center z-50">
       <div className="bg-white p-6 rounded-xl shadow-2xl w-80 text-center border border-orange-200">
-        <h2 className="text-xl font-bold mb-4">選擇捐款金額 💝</h2>
+        <h2 className="text-xl font-bold mb-1">贊助 {animalName} 💝</h2>
+        <p className="text-xs text-gray-400 mb-4">選擇或輸入捐款金額</p>
 
-        {/* 預設金額 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {[50, 100, 300, 500].map((amount) => (
             <button
@@ -78,7 +105,6 @@ function DonateModal({ onClose }) {
           ))}
         </div>
 
-        {/* 自訂金額 */}
         <input
           type="number"
           min="1"
@@ -88,31 +114,20 @@ function DonateModal({ onClose }) {
           className="w-full border border-gray-300 rounded-lg p-2"
         />
 
-        {/* 讓兩個按鈕之間有間距 */}
         <div className="mt-3 flex flex-col gap-3">
-          {/* 捐款 → 基本 #BB5500、hover #cc6611；有自訂金額時變 #994400 */}
           <button
-    onClick={() => donate(customAmount || "未填")}
-    className={`
-      w-full py-2 rounded-lg transition 
-      ${donateBtnColor} 
-      text-white !text-white
-    `}
-  >
-    捐款
-  </button>
+            onClick={() => donate(customAmount)}
+            className={`w-full py-2 rounded-lg transition ${donateBtnColor} text-white !text-white`}
+          >
+            確認捐款
+          </button>
 
-          {/* 取消 → 背景 #fff9f0、hover 我幫你調成 #FFEACE；文字白色 */}
           <button
-    onClick={onClose}
-    className="
-      w-full py-2 rounded-lg transition 
-      bg-[#e7b76f] hover:bg-[#994400] 
-      text-white !text-white
-    "
-  >
-    取消
-  </button>
+            onClick={onClose}
+            className="w-full py-2 rounded-lg transition bg-[#e7b76f] hover:bg-[#994400] text-white !text-white"
+          >
+            取消
+          </button>
         </div>
       </div>
     </div>

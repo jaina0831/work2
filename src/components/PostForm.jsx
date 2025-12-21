@@ -1,3 +1,4 @@
+// src/components/PostForm.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
@@ -23,15 +24,40 @@ export default function PostForm() {
     if (!user) return navigate("/login");
 
     const fd = new FormData();
+    // ✅ 後端用 Firebase 決定 author / author_avatar，所以前端不用傳 author
     fd.append("title", title);
     fd.append("content", content);
     if (image) fd.append("image", image);
 
     createPost.mutate(fd, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        try {
+          // ⭐⭐⭐ 發文成功後，存入 localStorage 的 myPosts（給「我的發文紀錄」頁用）
+          const myPosts = JSON.parse(localStorage.getItem("myPosts") || "[]");
+
+          myPosts.unshift({
+            id: data?.id ?? Date.now(), // 以 API 回傳 id 為主
+            title: data?.title ?? title,
+            created_at: data?.created_at ?? new Date().toISOString(),
+            author: user.displayName || user.email || "匿名",
+            author_avatar: user.photoURL || "",
+          });
+
+          localStorage.setItem("myPosts", JSON.stringify(myPosts));
+        } catch (err) {
+          console.warn("save myPosts failed:", err);
+        }
+
+        // ✅ 清空表單
         setTitle("");
         setContent("");
         setImage(null);
+
+        // （可選）提示
+        // alert("發文成功！已記錄至您的個人中心 📝");
+      },
+      onError: (err) => {
+        console.error("發文失敗:", err);
       },
     });
   };
@@ -49,7 +75,10 @@ export default function PostForm() {
   }
 
   return (
-    <form onSubmit={submit} className="bg-white border rounded-xl shadow-sm p-4 mb-6">
+    <form
+      onSubmit={submit}
+      className="bg-white border rounded-xl shadow-sm p-4 mb-6"
+    >
       <h3 className="text-lg font-semibold mb-3">發新文章</h3>
 
       <input
@@ -76,6 +105,7 @@ export default function PostForm() {
           className="file-input file-input-bordered"
           onChange={(e) => setImage(e.target.files?.[0] || null)}
         />
+
         <button className="btn btn-primary" disabled={createPost.isPending}>
           {createPost.isPending ? "發佈中…" : "發佈"}
         </button>
