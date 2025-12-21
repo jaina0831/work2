@@ -14,6 +14,13 @@ import Login from "./pages/Login.jsx";
 import Signin from "./pages/Signin.jsx";
 import AuthPage from "./pages/Auth.jsx"; 
 
+
+// 1. 建立一個簡單的延遲函式
+const delayLoader = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 強制延遲 0.8 秒
+  return null;
+};
+
 export const router = createBrowserRouter([
   {
     element: <Layout />, 

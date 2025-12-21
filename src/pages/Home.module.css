@@ -1,3 +1,16 @@
+@font-face {
+  font-family: 'GenSenRounded'; /* 這是我們為字體取的暱稱 */
+  src: url('../assets/fonts/GenSenRounded2TW-B.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+    font-family: 'ChenYuluoyan';
+    src: url('../assets/fonts/ChenYuluoyan-2.0-Thin.ttf') format('truetype'); 
+    font-weight: bold;
+    font-style: normal;
+}
 .container {  
   width: 100%;
   height: 100%;
@@ -13,6 +26,7 @@
     width: 90%;
     height: 500px;
     max-width: 1200px;
+    margin-bottom: 25px;
     /* margin: 1rem 0; */
     background-color: rgb(198, 166, 117);
     overflow: hidden;
@@ -33,9 +47,9 @@
 .CoreServiceArea{
     width: 90%;
     height: 300px;
-    padding: 1rem 6rem;
+    padding: 15px 6rem;
     max-width: 1200px;
-    margin: 2rem 0;
+    margin: 10px 0;
     display: flex;
     justify-content: space-between;
     gap: 3rem;
@@ -51,34 +65,46 @@
     border-radius: 15px;
     border: 5px solid #D9CBB7;
      /* 模擬 Tailwind shadow-lg */
-    box-shadow: 0 5px 12px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+    /* box-shadow: 0 5px 12px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.08); */
     /* 確保所有陰影變化都有平滑的過渡效果 */
-    transition: box-shadow 0.3s ease-in-out ;
+    /* transition: box-shadow 0.3s ease-in-out ; */
 }
 
-.ServicesArea:hover {
+/* .ServicesArea:hover {
     box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.6), 0 8px 12px -6px rgba(0, 0, 0, 0.2);
     transform: scale(1.03) ;
     transition-delay: 2s;
+} */
+.cardLinkReset{
+    text-decoration: none; /* 移除底線 */
+    color: inherit; /* 繼承父元素的文字顏色，而不是藍色 */
+    display: flex;
+    flex-direction: column; /* 1. 改為垂直排列，文字就會在圖片下方 */
+    justify-content: center; /* 2. 垂直方向居中 */
+    align-items: center;    /* 3. 水平方向居中 */
 }
 
 .ServiceIcon{
     width: 220px;
     height: 220px;
     display: flex;
+
     justify-content: center;
     align-items: center;
+    /* 確保沒有手指游標 */
+    cursor: default;
 }
 .Servicetext{
     font-size: 1.2rem;
     font-weight: bold;
     color: #4C463F;
+    text-align: center;
     font-family: 'Courier New', Courier, monospace;
 }
 
 .AdoptionInformationArea{
     width: 100%;
-    height: 510px;
+    height: 550px;
     max-width: 1200px;
     margin: 10px 0;
     background-color: #D9CBB7;
@@ -111,6 +137,7 @@
     width: 180px;
     height: 50px;
     padding: 5px;
+    font-family: 'GenSenRounded'; /* 使用自定義字體 */
     font-size: 16px; /* 稍微放大字體 */
     font-weight: 500; /* 加粗字體 */
     color: #FFFFFF; /* 文字顏色：白色 */
@@ -182,14 +209,16 @@
 
 .titletext h1{
     color: #272017;
+    margin-top: 15px;
     margin-left: 15px;
+    font-size: 20px;
     font-weight: 700;
     font-family: 'Courier New', Courier, monospace;
 }
 
 .CafeRecommendationArea{
     width: 100%;
-    height: 510px;
+    height: 520px;
     max-width: 1200px;
     margin: 1rem 0;
     background-color: #D9CBB7;
@@ -335,4 +364,41 @@
     color: inherit; /* 繼承父元素的文字顏色，而不是藍色 */
     display: block; /* 確保 Link 佔滿整個卡片寬度 */
     cursor: pointer; /* 顯示為可點擊 */
+}
+
+.AboutSection {
+  padding: 40px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 確保子元素水平置中 */
+  justify-content: center;
+  width: 100%;
+}
+
+/* 建立一個專門包裹卡片的容器樣式 */
+.CardContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 40px;
+  text-align: left; /* 卡片內的文字依然維持靠左，比較好閱讀 */
+  width: 80%;       /* 控制卡片群組的整體寬度 */
+  max-width: 900px; /* 避免在超寬螢幕上卡片太長 */
+  align-items: center; /* 讓內部的卡片在容器內也置中 */
+}
+
+/* 統一卡片的樣式 */
+.ConceptCardCustom {
+  width: 100%;       /* 寬度會跟隨 CardContainer 的 80% */
+  background: #fff;
+  padding: 30px 40px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-left: 8px solid #f57c00;
+  transition: transform 0.3s ease;
+}
+
+.ConceptCardCustom:hover {
+  transform: translateY(-5px); /* 置中佈局適合向上微浮的效果 */
 }

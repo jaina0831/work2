@@ -1,6 +1,8 @@
+
 // src/pages/Layout.jsx
-import { NavLink, Link, Outlet } from "react-router-dom";
+import { NavLink, Link, Outlet, useNavigation } from "react-router-dom"; // 1. 引入 useNavigation
 import { useAuth } from "../context/AuthContext.jsx";
+import LoadingScreen from "../components/LoadingScreen.jsx"; // 2. 引入您的 Loading 組件
 
 const linkBase =
   "text-gray-800 no-underline px-5 py-2 rounded-md transition-colors duration-200 hover:bg-[#e7b76f] hover:text-white";
@@ -11,7 +13,12 @@ const defaultAvatar =
   "https://placehold.co/32x32/EEE/AAA?text=U";
 
 export default function Layout() {
+
   const { user } = useAuth();
+  // 3. 使用 useNavigation 監控導航狀態
+  const navigation = useNavigation();
+  // 當狀態為 "loading" 時，表示正在載入新頁面的組件或資料
+  const isPageLoading = navigation.state === "loading";
 
   // 顯示名字的優先順序：displayName > email 前半段 > 預設「訪客」
   const displayName =
@@ -22,6 +29,9 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-[#FFFCF2]">
+      {/* 4. 路由跳轉時顯示 LoadingScreen */}
+      {isPageLoading && <LoadingScreen />}
+      
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-6xl w-full mx-auto px-6 py-3 flex items-center justify-between">
