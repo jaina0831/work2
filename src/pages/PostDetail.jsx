@@ -17,6 +17,17 @@ import heart from "../assets/heart.png";
 import heart2 from "../assets/heart2.png";
 import comment from "../assets/comment.png";
 
+// ✅ 分帳 localStorage key
+const kComments = (uid) => `myComments:${uid}`;
+// （如果你後面想把刪文也分帳同步，這個也用得到）
+const kPosts = (uid) => `myPosts:${uid}`;
+
+// ✅ 強制清除舊版共用 key（避免新帳號看到舊帳號資料）
+const clearLegacyKeys = () => {
+  localStorage.removeItem("myPosts");
+  localStorage.removeItem("myComments");
+};
+
 function resolveUrl(path) {
   if (!path) return null;
   if (path.startsWith("http")) return path;
@@ -55,7 +66,7 @@ export default function PostDetail() {
     like.mutate(post.id);
   };
 
-  // ✅ 留言：登入才可 + 成功後存入 localStorage.myComments
+  // ✅ 留言：必須登入 + 成功後存入「分帳 key」
   const submit = (e) => {
     e.preventDefault();
     if (!user) return navigate("/login");
@@ -63,14 +74,15 @@ export default function PostDetail() {
     const t = text.trim();
     if (!t) return;
 
+    clearLegacyKeys();
+
     createComment.mutate(
       { post_id: post.id, text: t },
       {
         onSuccess: () => {
           try {
-            const myComments = JSON.parse(
-              localStorage.getItem("myComments") || "[]"
-            );
+            const key = kComments(user.uid);
+            const myComments = JSON.parse(localStorage.getItem(key) || "[]");
 
             myComments.unshift({
               id: Date.now(),
@@ -82,7 +94,7 @@ export default function PostDetail() {
               author_avatar: user.photoURL || "",
             });
 
-            localStorage.setItem("myComments", JSON.stringify(myComments));
+            localStorage.setItem(key, JSON.stringify(myComments));
           } catch (err) {
             console.warn("save myComments failed:", err);
           }
@@ -93,18 +105,21 @@ export default function PostDetail() {
     setText("");
   };
 
-  // ✅ 刪文：成功後同步移除 localStorage.myPosts
+  // ✅ 刪文：必須登入；（可選）同步移除「分帳 myPosts」
   const onDelete = () => {
     if (!user) return navigate("/login");
-
     if (!confirm("確定要刪除這篇文章嗎？")) return;
+
+    clearLegacyKeys();
 
     del.mutate(post.id, {
       onSuccess: () => {
+        // ⭐ 可選：同步移除分帳 myPosts 記錄（不影響刪文本身）
         try {
-          const myPosts = JSON.parse(localStorage.getItem("myPosts") || "[]");
+          const key = kPosts(user.uid);
+          const myPosts = JSON.parse(localStorage.getItem(key) || "[]");
           const updatedPosts = myPosts.filter((p) => p.id !== post.id);
-          localStorage.setItem("myPosts", JSON.stringify(updatedPosts));
+          localStorage.setItem(key, JSON.stringify(updatedPosts));
         } catch (err) {
           console.warn("update myPosts failed:", err);
         }

@@ -5,6 +5,14 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase";
 import { useCreatePost } from "../lib/queries";
 
+const kPosts = (uid) => `myPosts:${uid}`;
+
+// 強制清掉舊版共用
+const clearLegacyKeys = () => {
+  localStorage.removeItem("myPosts");
+  localStorage.removeItem("myComments");
+};
+
 export default function PostForm() {
   const navigate = useNavigate();
   const createPost = useCreatePost();
@@ -23,8 +31,9 @@ export default function PostForm() {
     e.preventDefault();
     if (!user) return navigate("/login");
 
+    clearLegacyKeys();
+
     const fd = new FormData();
-    // ✅ 後端用 Firebase 決定 author / author_avatar，所以前端不用傳 author
     fd.append("title", title);
     fd.append("content", content);
     if (image) fd.append("image", image);
@@ -32,29 +41,25 @@ export default function PostForm() {
     createPost.mutate(fd, {
       onSuccess: (data) => {
         try {
-          // ⭐⭐⭐ 發文成功後，存入 localStorage 的 myPosts（給「我的發文紀錄」頁用）
-          const myPosts = JSON.parse(localStorage.getItem("myPosts") || "[]");
+          const key = kPosts(user.uid);
+          const myPosts = JSON.parse(localStorage.getItem(key) || "[]");
 
           myPosts.unshift({
-            id: data?.id ?? Date.now(), // 以 API 回傳 id 為主
+            id: data?.id ?? Date.now(),
             title: data?.title ?? title,
             created_at: data?.created_at ?? new Date().toISOString(),
             author: user.displayName || user.email || "匿名",
             author_avatar: user.photoURL || "",
           });
 
-          localStorage.setItem("myPosts", JSON.stringify(myPosts));
+          localStorage.setItem(key, JSON.stringify(myPosts));
         } catch (err) {
           console.warn("save myPosts failed:", err);
         }
 
-        // ✅ 清空表單
         setTitle("");
         setContent("");
         setImage(null);
-
-        // （可選）提示
-        // alert("發文成功！已記錄至您的個人中心 📝");
       },
       onError: (err) => {
         console.error("發文失敗:", err);
@@ -75,10 +80,7 @@ export default function PostForm() {
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="bg-white border rounded-xl shadow-sm p-4 mb-6"
-    >
+    <form onSubmit={submit} className="bg-white border rounded-xl shadow-sm p-4 mb-6">
       <h3 className="text-lg font-semibold mb-3">發新文章</h3>
 
       <input

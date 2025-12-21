@@ -9,6 +9,14 @@ import { auth } from "../firebase";
 import bin from "../assets/bin.png";
 import bin2 from "../assets/bin2.png";
 
+const kPosts = (uid) => `myPosts:${uid}`;
+const kComments = (uid) => `myComments:${uid}`;
+
+const clearLegacyKeys = () => {
+  localStorage.removeItem("myPosts");
+  localStorage.removeItem("myComments");
+};
+
 function resolveUrl(path) {
   if (!path) return null;
   if (path.startsWith("http")) return path;
@@ -38,7 +46,6 @@ export default function PostCard({ post }) {
     like.mutate(post.id);
   };
 
-  // ✅ 修正：送 author / author_avatar，且 avatar 永遠是字串（避免 DB NOT NULL 爆炸）
   const submit = (e) => {
     e.preventDefault();
     if (!user) return navigate("/login");
@@ -46,17 +53,16 @@ export default function PostCard({ post }) {
     const t = text.trim();
     if (!t) return;
 
+    clearLegacyKeys();
+
     createComment.mutate(
-      {
-        post_id: post.id,
-        text: t,
-        author: user.displayName || user.email || "匿名",
-        author_avatar: user.photoURL || "", // ✅ 永遠不會是 null
-      },
+      { post_id: post.id, text: t },
       {
         onSuccess: () => {
           try {
-            const myComments = JSON.parse(localStorage.getItem("myComments") || "[]");
+            const key = kComments(user.uid);
+            const myComments = JSON.parse(localStorage.getItem(key) || "[]");
+
             myComments.unshift({
               id: Date.now(),
               post_id: post.id,
@@ -66,7 +72,8 @@ export default function PostCard({ post }) {
               author: user.displayName || user.email || "匿名",
               author_avatar: user.photoURL || "",
             });
-            localStorage.setItem("myComments", JSON.stringify(myComments));
+
+            localStorage.setItem(key, JSON.stringify(myComments));
           } catch (err) {
             console.warn("save myComments failed:", err);
           }
@@ -81,12 +88,15 @@ export default function PostCard({ post }) {
     if (!user) return navigate("/login");
     if (!confirm("確定要刪除這篇文章嗎？")) return;
 
+    clearLegacyKeys();
+
     del.mutate(post.id, {
       onSuccess: () => {
         try {
-          const myPosts = JSON.parse(localStorage.getItem("myPosts") || "[]");
+          const key = kPosts(user.uid);
+          const myPosts = JSON.parse(localStorage.getItem(key) || "[]");
           const updatedPosts = myPosts.filter((p) => p.id !== post.id);
-          localStorage.setItem("myPosts", JSON.stringify(updatedPosts));
+          localStorage.setItem(key, JSON.stringify(updatedPosts));
         } catch (err) {
           console.warn("update myPosts failed:", err);
         }
@@ -134,15 +144,11 @@ export default function PostCard({ post }) {
         <p className="text-base mb-3 whitespace-pre-wrap">{post.content}</p>
 
         <div className="flex items-center gap-3 mb-2">
-          <button
-            className="btn btn-sm"
-            onClick={onToggleLike}
-            disabled={like.isPending}
-            title={!user ? "請先登入才能按讚" : "按讚"}
-          >
+          <button className="btn btn-sm" onClick={onToggleLike} disabled={like.isPending}>
             👍 {post.likes_count ?? 0}
           </button>
 
+          {/* ✅ 統一路由 */}
           <button className="btn btn-sm" onClick={() => navigate(`/posts/${post.id}`)}>
             看完整內文
           </button>
@@ -180,9 +186,7 @@ export default function PostCard({ post }) {
                 placeholder="寫點什麼…"
                 required
               />
-              <button className="btn btn-accent btn-sm" disabled={createComment.isPending}>
-                {createComment.isPending ? "送出中…" : "送出"}
-              </button>
+              <button className="btn btn-accent btn-sm">送出</button>
             </form>
           )}
         </div>
