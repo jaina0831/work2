@@ -87,7 +87,7 @@ useEffect(() => {
         <img
           src={chatbotIcon}
           alt="聊天小管家"
-          className="w-12 h-12 object-cover rounded-full"
+          className="w-7 h-7 object-cover rounded-full"
         />
       </button>
 
@@ -107,7 +107,7 @@ useEffect(() => {
               <img
                 src={catAvatar}
                 alt="小管家"
-                className="w-7 h-7 rounded-full object-cover"
+                className="w-5 h-5 rounded-full object-cover"
               />
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-[#774422]">
