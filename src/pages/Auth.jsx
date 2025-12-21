@@ -144,6 +144,9 @@ const AuthPage = () => {
           <button
             type="button"
             onClick={handleResetPassword}
+            style={{
+    color: "#ffffff", // ✅ 強制白字
+  }}
             className="
               w-full py-2.5 rounded-full text-sm font-semibold text-white shadow
               bg-[#D6B788]
