@@ -30,17 +30,21 @@ export default function MyComments() {
   return (
     <div className="min-h-screen bg-[#fff9f0]">
       <div className="max-w-6xl mx-auto px-6 py-10">
-        {/* 返回帳號中心 */}
-        <button
-          onClick={() => navigate("/auth")}
-          className="mb-5 inline-flex items-center gap-2
-                     bg-[#c76c21] hover:bg-[#a95a1c]
-                     text-white font-semibold
-                     rounded-full px-5 py-3 shadow"
-          style={{ color: "#fff" }}
-        >
-          ← 返回帳號中心
-        </button>
+        {/* ✅ 強制 20px 間隔 */}
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={() => navigate("/auth")}
+            className="
+              inline-flex items-center gap-2
+              bg-[#c76c21] hover:bg-[#a95a1c]
+              text-white font-semibold
+              rounded-3xl px-5 py-3 shadow
+            "
+            style={{ color: "#fff" }}
+          >
+            ← 返回帳號中心
+          </button>
+        </div>
 
         {/* 主匡 */}
         <div className="bg-[#fff7e6] rounded-3xl shadow p-8">
@@ -61,18 +65,18 @@ export default function MyComments() {
               {items.map((c) => (
                 <div
                   key={c.id}
-                  className="bg-white rounded-2xl shadow
-                             px-6 py-5
-                             flex items-center justify-between"
+                  className="
+                    bg-white rounded-2xl shadow
+                    px-6 py-5
+                    flex items-center justify-between
+                  "
                 >
-                  {/* 左側文字 */}
                   <div>
-                    {/* 留言內容 */}
                     <div className="text-lg font-semibold mb-1">
                       「{c.text}」
                     </div>
 
-                    {/* 🔥 指定顏色區塊 */}
+                    {/* 🔥 指定顏色 */}
                     <div
                       className="text-sm font-medium"
                       style={{ color: "#c76c21" }}
@@ -82,13 +86,14 @@ export default function MyComments() {
                     </div>
                   </div>
 
-                  {/* 右側按鈕 */}
                   <button
                     onClick={() => navigate(`/posts/${c.post_id}`)}
-                    className="rounded-xl px-4 py-2
-                               border border-[#c76c21]
-                               text-[#c76c21] font-semibold
-                               hover:bg-[#fff0dc]"
+                    className="
+                      rounded-xl px-4 py-2
+                      border border-[#c76c21]
+                      text-[#c76c21] font-semibold
+                      hover:bg-[#fff0dc]
+                    "
                   >
                     前往文章 →
                   </button>
